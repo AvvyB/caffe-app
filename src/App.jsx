@@ -9,7 +9,7 @@ import { pushSupported, checkSubscribed, subscribeToPush, unsubscribeFromPush, n
 // Only people with this password can change the menu and
 // receive notifications when orders come in.
 // ============================================================
-const ADMIN_PASSWORD = '33g@edHUzyYb!p';
+const ADMIN_PASSWORD = 'changeme';
 const ADMIN_AUTH_KEY = 'caffe-admin-ok';
 
 const COLORS = {
@@ -116,13 +116,6 @@ export default function App() {
   };
 
   const baseObj = ESPRESSO_BASES.find((b) => b.id === base);
-  const addonTotal = ['syrups', 'spices', 'milks', 'extras'].reduce((sum, cat) => {
-    return sum + selected[cat].reduce((s, id) => {
-      const item = addons[cat]?.find((a) => a.id === id);
-      return s + (item?.price || 0);
-    }, 0);
-  }, 0);
-  const total = (baseObj?.price || 0) + addonTotal;
 
   const placeOrder = () => {
     // Build a readable summary for the notification
@@ -135,7 +128,7 @@ export default function App() {
       });
     });
     const orderText = `${tempLabel} ${baseObj?.name || ''}${parts.length ? ' · ' + parts.join(', ') : ''}`.trim();
-    notifyOrder(orderText, total);
+    notifyOrder(orderText);
 
     setOrderPlaced(true);
     setTimeout(() => {
@@ -229,7 +222,7 @@ export default function App() {
           </div>
         </div>
       ) : view === 'order' ? (
-        <OrderView {...{ temp, setTemp, base, setBase, addons, selected, toggleSelected, total, baseObj, placeOrder, orderPlaced }} />
+        <OrderView {...{ temp, setTemp, base, setBase, addons, selected, toggleSelected, baseObj, placeOrder, orderPlaced }} />
       ) : (
         <AdminView addons={addons} saveMenu={saveMenu} />
       )}
@@ -237,7 +230,7 @@ export default function App() {
   );
 }
 
-function OrderView({ temp, setTemp, base, setBase, addons, selected, toggleSelected, total, baseObj, placeOrder, orderPlaced }) {
+function OrderView({ temp, setTemp, base, setBase, addons, selected, toggleSelected, baseObj, placeOrder, orderPlaced }) {
   if (orderPlaced) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '96px 24px', textAlign: 'center' }}>
@@ -249,7 +242,7 @@ function OrderView({ temp, setTemp, base, setBase, addons, selected, toggleSelec
         </h2>
         <p style={{ marginTop: 12, fontSize: 14, opacity: 0.7 }}>We'll have it ready in a few minutes.</p>
         <div style={{ marginTop: 24, padding: '8px 16px', borderRadius: 999, fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: '0.2em', background: COLORS.espresso, color: COLORS.cream }}>
-          ${total.toFixed(2)} · {temp?.toUpperCase()} {baseObj?.name.toUpperCase()}
+          {temp?.toUpperCase()} {baseObj?.name.toUpperCase()}
         </div>
       </div>
     );
@@ -318,7 +311,6 @@ function OrderView({ temp, setTemp, base, setBase, addons, selected, toggleSelec
                     }}
                   >
                     <span>{item.name}</span>
-                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, opacity: 0.7 }}>+${item.price.toFixed(2)}</span>
                   </button>
                 );
               })}
@@ -348,7 +340,8 @@ function OrderView({ temp, setTemp, base, setBase, addons, selected, toggleSelec
               borderRadius: 16,
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'space-between',
+              justifyContent: 'center',
+              gap: 8,
               background: COLORS.espresso,
               color: COLORS.cream,
               border: 'none',
@@ -356,11 +349,8 @@ function OrderView({ temp, setTemp, base, setBase, addons, selected, toggleSelec
               fontFamily: 'inherit',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <ShoppingBag size={16} />
-              <span style={{ fontWeight: 500, fontSize: 14 }}>Place order</span>
-            </div>
-            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 500, fontSize: 14 }}>${total.toFixed(2)}</div>
+            <ShoppingBag size={16} />
+            <span style={{ fontWeight: 500, fontSize: 14 }}>Place order</span>
           </button>
         </div>
       )}
@@ -415,7 +405,6 @@ function BaseButton({ item, active, onClick }) {
         <div style={{ fontFamily: "'Fraunces', serif", fontSize: 17, fontWeight: 500, letterSpacing: '-0.01em' }}>{item.name}</div>
         <div style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }}>{item.desc}</div>
       </div>
-      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, fontWeight: 500 }}>${item.price.toFixed(2)}</div>
     </button>
   );
 }
@@ -662,19 +651,16 @@ function PasswordGate({ onSuccess }) {
 function AdminPanel({ addons, saveMenu, onSignOut }) {
   const [activeCat, setActiveCat] = useState('syrups');
   const [newName, setNewName] = useState('');
-  const [newPrice, setNewPrice] = useState('');
 
   const addItem = () => {
     const name = newName.trim();
-    const price = parseFloat(newPrice);
-    if (!name || isNaN(price) || price < 0) return;
+    if (!name) return;
     const next = {
       ...addons,
-      [activeCat]: [...(addons[activeCat] || []), { id: `${activeCat}${Date.now()}`, name, price }],
+      [activeCat]: [...(addons[activeCat] || []), { id: `${activeCat}${Date.now()}`, name }],
     };
     saveMenu(next);
     setNewName('');
-    setNewPrice('');
   };
 
   const removeItem = (id) => {
@@ -736,25 +722,16 @@ function AdminPanel({ addons, saveMenu, onSignOut }) {
 
       <div style={{ padding: 16, borderRadius: 16, marginBottom: 20, background: COLORS.cream, border: `1px solid ${COLORS.espresso}10` }}>
         <div style={{ ...sectionLabelStyle, marginBottom: 10 }}>Add new</div>
-        <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-          <input
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            placeholder={`Name (e.g. ${placeholderName})`}
-            style={{ flex: 1, padding: '10px 12px', borderRadius: 12, fontSize: 14, outline: 'none', minWidth: 0, background: COLORS.paper, border: `1px solid ${COLORS.espresso}20`, fontFamily: "'DM Sans', sans-serif" }}
-          />
-          <input
-            value={newPrice}
-            onChange={(e) => setNewPrice(e.target.value)}
-            placeholder="0.75"
-            type="number"
-            step="0.25"
-            style={{ width: 80, padding: '10px 12px', borderRadius: 12, fontSize: 14, outline: 'none', background: COLORS.paper, border: `1px solid ${COLORS.espresso}20`, fontFamily: "'JetBrains Mono', monospace" }}
-          />
-        </div>
+        <input
+          value={newName}
+          onChange={(e) => setNewName(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') addItem(); }}
+          placeholder={`Name (e.g. ${placeholderName})`}
+          style={{ width: '100%', padding: '10px 12px', borderRadius: 12, fontSize: 14, outline: 'none', minWidth: 0, background: COLORS.paper, border: `1px solid ${COLORS.espresso}20`, fontFamily: "'DM Sans', sans-serif", marginBottom: 8, boxSizing: 'border-box' }}
+        />
         <button
           onClick={addItem}
-          disabled={!newName.trim() || !newPrice}
+          disabled={!newName.trim()}
           style={{
             width: '100%',
             padding: '10px 0',
@@ -767,7 +744,7 @@ function AdminPanel({ addons, saveMenu, onSignOut }) {
             fontWeight: 500,
             background: COLORS.espresso,
             color: COLORS.cream,
-            opacity: !newName.trim() || !newPrice ? 0.4 : 1,
+            opacity: !newName.trim() ? 0.4 : 1,
             border: 'none',
             cursor: 'pointer',
             fontFamily: 'inherit',
@@ -786,10 +763,7 @@ function AdminPanel({ addons, saveMenu, onSignOut }) {
         ) : (
           addons[activeCat].map((item) => (
             <div key={item.id} style={{ padding: '12px 16px', borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: COLORS.cream, border: `1px solid ${COLORS.espresso}10` }}>
-              <div>
-                <div style={{ fontFamily: "'Fraunces', serif", fontSize: 16, fontWeight: 500 }}>{item.name}</div>
-                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: COLORS.copperDark, marginTop: 2 }}>+${item.price.toFixed(2)}</div>
-              </div>
+              <div style={{ fontFamily: "'Fraunces', serif", fontSize: 16, fontWeight: 500 }}>{item.name}</div>
               <button
                 onClick={() => removeItem(item.id)}
                 style={{ width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: COLORS.paper, color: COLORS.espressoLight, border: 'none', cursor: 'pointer' }}
