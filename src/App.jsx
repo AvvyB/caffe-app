@@ -5,11 +5,11 @@ import { MENU_DOC, db } from './firebase';
 import { pushSupported, checkSubscribed, subscribeToPush, unsubscribeFromPush, notifyOrder } from './push';
 
 // ============================================================
-// CHANGE THIS PASSWORD to lock the Menu / Owner panel. 
+// CHANGE THIS PASSWORD to lock the Menu / Owner panel.
 // Only people with this password can change the menu and
 // receive notifications when orders come in.
 // ============================================================
-const ADMIN_PASSWORD = '33g@edHUzyYb!p';
+const ADMIN_PASSWORD = 'changeme';
 const ADMIN_AUTH_KEY = 'caffe-admin-ok';
 
 const COLORS = {
@@ -124,8 +124,12 @@ export default function App() {
 
     // Build readable strings
     const tempLabel = temp ? temp.charAt(0).toUpperCase() + temp.slice(1) : '';
+    const isShot = baseObj?.group === 'shots';
+    const cats = isShot
+      ? ['syrups', 'spices', 'extras']
+      : ['syrups', 'spices', 'milks', 'extras'];
     const addonsList = [];
-    ['syrups', 'spices', 'milks', 'extras'].forEach((cat) => {
+    cats.forEach((cat) => {
       selected[cat].forEach((id) => {
         const item = addons[cat]?.find((a) => a.id === id);
         if (item) addonsList.push(item.name);
@@ -244,7 +248,7 @@ export default function App() {
           </div>
         </div>
       ) : view === 'order' ? (
-        <OrderView {...{ temp, setTemp, base, setBase, addons, selected, toggleSelected, baseObj, requestPlaceOrder, submitOrder, askingName, setAskingName, orderPlaced }} />
+        <OrderView {...{ temp, setTemp, base, setBase, addons, selected, setSelected, toggleSelected, baseObj, requestPlaceOrder, submitOrder, askingName, setAskingName, orderPlaced }} />
       ) : (
         <AdminView addons={addons} saveMenu={saveMenu} />
       )}
@@ -252,7 +256,7 @@ export default function App() {
   );
 }
 
-function OrderView({ temp, setTemp, base, setBase, addons, selected, toggleSelected, baseObj, requestPlaceOrder, submitOrder, askingName, setAskingName, orderPlaced }) {
+function OrderView({ temp, setTemp, base, setBase, addons, selected, setSelected, toggleSelected, baseObj, requestPlaceOrder, submitOrder, askingName, setAskingName, orderPlaced }) {
   if (orderPlaced) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '96px 24px', textAlign: 'center' }}>
@@ -282,6 +286,15 @@ function OrderView({ temp, setTemp, base, setBase, addons, selected, toggleSelec
     setTemp(newTemp);
   };
 
+  // Clear milk selections if switching to a shot (since milk options will hide)
+  const pickBase = (id) => {
+    setBase(id);
+    const newDrink = ESPRESSO_BASES.find((b) => b.id === id);
+    if (newDrink?.group === 'shots') {
+      setSelected((s) => ({ ...s, milks: [] }));
+    }
+  };
+
   return (
     <div style={{ padding: '24px 20px 128px' }}>
       <div style={{ marginBottom: 28 }}>
@@ -305,7 +318,7 @@ function OrderView({ temp, setTemp, base, setBase, addons, selected, toggleSelec
               <SubLabel>Espresso shots</SubLabel>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
                 {shotBases.map((b) => (
-                  <BaseButton key={b.id} item={b} active={base === b.id} onClick={() => setBase(b.id)} />
+                  <BaseButton key={b.id} item={b} active={base === b.id} onClick={() => pickBase(b.id)} />
                 ))}
               </div>
             </>
@@ -315,7 +328,7 @@ function OrderView({ temp, setTemp, base, setBase, addons, selected, toggleSelec
               <SubLabel>Espresso with milk</SubLabel>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 28 }}>
                 {milkBases.map((b) => (
-                  <BaseButton key={b.id} item={b} active={base === b.id} onClick={() => setBase(b.id)} />
+                  <BaseButton key={b.id} item={b} active={base === b.id} onClick={() => pickBase(b.id)} />
                 ))}
               </div>
             </>
@@ -323,7 +336,10 @@ function OrderView({ temp, setTemp, base, setBase, addons, selected, toggleSelec
         </>
       )}
 
-      {temp && base && ['syrups', 'spices', 'milks', 'extras'].map((cat, i) => (
+      {temp && base && (() => {
+        const isShot = baseObj?.group === 'shots';
+        const cats = isShot ? ['syrups', 'spices', 'extras'] : ['syrups', 'spices', 'milks', 'extras'];
+        return cats.map((cat, i) => (
         addons[cat]?.length > 0 && (
           <div key={cat} style={{ marginBottom: 24 }}>
             <SectionLabel>{`0${i + 3} · ${CATEGORY_LABELS[cat]}`}</SectionLabel>
@@ -356,7 +372,8 @@ function OrderView({ temp, setTemp, base, setBase, addons, selected, toggleSelec
             </div>
           </div>
         )
-      ))}
+      ));
+      })()}
 
       {temp && base && (
         <div
