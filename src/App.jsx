@@ -5,7 +5,7 @@ import { MENU_DOC, db } from './firebase';
 import { pushSupported, checkSubscribed, subscribeToPush, unsubscribeFromPush, notifyOrder } from './push';
 
 // ============================================================
-// CHANGE THIS PASSWORD to lock the Menu / Owner panel.
+// CHANGE THIS PASSWORD to lock the Menu / Owner panel. 
 // Only people with this password can change the menu and
 // receive notifications when orders come in.
 // ============================================================
