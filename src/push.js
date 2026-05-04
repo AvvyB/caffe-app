@@ -5,7 +5,7 @@ import { db } from './firebase';
 // ============================================================
 // PASTE YOUR VAPID PUBLIC KEY BELOW (see README Part 5)
 // ============================================================
-export const VAPID_PUBLIC_KEY = 'BBTNSeHm2TxcRQgZ_yyDhmP82L2BMPPNWuebX9zn-DQARCU3b7wxS9Ax0N3qXR9EM4kQJtv7st58pzbGpT3tSXo';
+export const VAPID_PUBLIC_KEY = 'PASTE_YOUR_VAPID_PUBLIC_KEY';
 
 const DEVICE_ID_KEY = 'caffe-device-id';
 
@@ -77,7 +77,7 @@ export async function unsubscribeFromPush() {
   }
 }
 
-export async function notifyOrder(orderText, total) {
+export async function notifyOrder(orderText) {
   try {
     const snap = await getDocs(collection(db, 'subscriptions'));
     const subscriptions = snap.docs.map((d) => d.data().subscription).filter(Boolean);
@@ -90,7 +90,7 @@ export async function notifyOrder(orderText, total) {
         subscriptions,
         payload: {
           title: 'New order ☕',
-          body: `${orderText} · $${total.toFixed(2)}`,
+          body: orderText || 'Someone placed an order.',
         },
       }),
     });
