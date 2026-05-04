@@ -77,7 +77,7 @@ export async function unsubscribeFromPush() {
   }
 }
 
-export async function notifyOrder(orderText) {
+export async function notifyOrder(orderText, title) {
   try {
     const snap = await getDocs(collection(db, 'subscriptions'));
     const subscriptions = snap.docs.map((d) => d.data().subscription).filter(Boolean);
@@ -89,7 +89,7 @@ export async function notifyOrder(orderText) {
       body: JSON.stringify({
         subscriptions,
         payload: {
-          title: 'New order ☕',
+          title: title || 'New order ☕',
           body: orderText || 'Someone placed an order.',
         },
       }),
