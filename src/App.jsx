@@ -9,7 +9,7 @@ import { pushSupported, checkSubscribed, subscribeToPush, unsubscribeFromPush, n
 // Only people with this password can change the menu and
 // receive notifications when orders come in.
 // ============================================================
-const ADMIN_PASSWORD = '33g@edHUzyYb!p';
+const ADMIN_PASSWORD = 'changeme';
 const ADMIN_AUTH_KEY = 'caffe-admin-ok';
 
 const COLORS = {
@@ -26,17 +26,14 @@ const COLORS = {
 const FONTS_LINK = 'https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap';
 
 const ESPRESSO_BASES = [
-  { id: 'single', name: 'Single Shot', desc: 'One pure shot of espresso', price: 3.0, group: 'shots' },
-  { id: 'double', name: 'Doppio', desc: 'A double shot, twice the depth', price: 4.0, group: 'shots' },
-  { id: 'ristretto', name: 'Ristretto', desc: 'Shorter pull, concentrated body', price: 3.5, group: 'shots' },
-  { id: 'lungo', name: 'Lungo', desc: 'Long pull, lighter and lengthier', price: 3.5, group: 'shots' },
-  { id: 'americano', name: 'Americano', desc: 'Espresso with hot water', price: 4.0, group: 'shots' },
-  { id: 'macchiato', name: 'Macchiato', desc: 'Espresso marked with a dollop of foam', price: 4.5, group: 'milk' },
-  { id: 'cortado', name: 'Cortado', desc: 'Espresso cut with warm steamed milk', price: 4.5, group: 'milk' },
-  { id: 'cappuccino', name: 'Cappuccino', desc: 'Equal parts espresso, milk, and foam', price: 5.0, group: 'milk' },
-  { id: 'flatwhite', name: 'Flat White', desc: 'Velvety microfoam over a double shot', price: 5.0, group: 'milk' },
-  { id: 'latte', name: 'Caffè Latte', desc: 'Smooth espresso with steamed milk', price: 5.5, group: 'milk' },
-  { id: 'mocha', name: 'Mocha', desc: 'Espresso, chocolate, and milk', price: 6.0, group: 'milk' },
+  { id: 'single', name: 'Single Shot', desc: 'One pure shot of espresso', group: 'shots', temps: ['hot'] },
+  { id: 'doppio', name: 'Doppio', desc: 'A double shot, twice the depth', group: 'shots', temps: ['hot'] },
+  { id: 'americano', name: 'Americano', desc: 'Espresso lengthened with water', group: 'shots', temps: ['hot', 'iced'] },
+  { id: 'macchiato', name: 'Macchiato', desc: 'Espresso marked with a dollop of foam', group: 'milk', temps: ['hot', 'iced'] },
+  { id: 'cappuccino', name: 'Cappuccino', desc: 'Equal parts espresso, milk, and foam', group: 'milk', temps: ['hot'] },
+  { id: 'flatwhite', name: 'Flat White', desc: 'Velvety microfoam over a double shot', group: 'milk', temps: ['hot'] },
+  { id: 'latte', name: 'Caffè Latte', desc: 'Smooth espresso with milk', group: 'milk', temps: ['hot', 'iced'] },
+  { id: 'mocha', name: 'Mocha', desc: 'Espresso, chocolate, and milk', group: 'milk', temps: ['hot', 'iced'] },
 ];
 
 const DEFAULT_ADDONS = {
@@ -248,8 +245,17 @@ function OrderView({ temp, setTemp, base, setBase, addons, selected, toggleSelec
     );
   }
 
-  const shotBases = ESPRESSO_BASES.filter((b) => b.group === 'shots');
-  const milkBases = ESPRESSO_BASES.filter((b) => b.group === 'milk');
+  const shotBases = ESPRESSO_BASES.filter((b) => b.group === 'shots' && b.temps.includes(temp));
+  const milkBases = ESPRESSO_BASES.filter((b) => b.group === 'milk' && b.temps.includes(temp));
+
+  // If user picks a temp that excludes their selected drink, clear it
+  const handleTempChange = (newTemp) => {
+    if (base) {
+      const stillValid = ESPRESSO_BASES.find((b) => b.id === base)?.temps.includes(newTemp);
+      if (!stillValid) setBase(null);
+    }
+    setTemp(newTemp);
+  };
 
   return (
     <div style={{ padding: '24px 20px 128px' }}>
@@ -262,25 +268,33 @@ function OrderView({ temp, setTemp, base, setBase, addons, selected, toggleSelec
 
       <SectionLabel>01 · Hot or iced</SectionLabel>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 28 }}>
-        <TempButton active={temp === 'hot'} onClick={() => setTemp('hot')} icon={<Flame size={20} />} label="Hot" activeColor={COLORS.copperDark} />
-        <TempButton active={temp === 'iced'} onClick={() => setTemp('iced')} icon={<Snowflake size={20} />} label="Iced" activeColor={COLORS.ice} />
+        <TempButton active={temp === 'hot'} onClick={() => handleTempChange('hot')} icon={<Flame size={20} />} label="Hot" activeColor={COLORS.copperDark} />
+        <TempButton active={temp === 'iced'} onClick={() => handleTempChange('iced')} icon={<Snowflake size={20} />} label="Iced" activeColor={COLORS.ice} />
       </div>
 
       {temp && (
         <>
           <SectionLabel>02 · Choose your drink</SectionLabel>
-          <SubLabel>Espresso shots</SubLabel>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
-            {shotBases.map((b) => (
-              <BaseButton key={b.id} item={b} active={base === b.id} onClick={() => setBase(b.id)} />
-            ))}
-          </div>
-          <SubLabel>Espresso with milk</SubLabel>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 28 }}>
-            {milkBases.map((b) => (
-              <BaseButton key={b.id} item={b} active={base === b.id} onClick={() => setBase(b.id)} />
-            ))}
-          </div>
+          {shotBases.length > 0 && (
+            <>
+              <SubLabel>Espresso shots</SubLabel>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+                {shotBases.map((b) => (
+                  <BaseButton key={b.id} item={b} active={base === b.id} onClick={() => setBase(b.id)} />
+                ))}
+              </div>
+            </>
+          )}
+          {milkBases.length > 0 && (
+            <>
+              <SubLabel>Espresso with milk</SubLabel>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 28 }}>
+                {milkBases.map((b) => (
+                  <BaseButton key={b.id} item={b} active={base === b.id} onClick={() => setBase(b.id)} />
+                ))}
+              </div>
+            </>
+          )}
         </>
       )}
 
