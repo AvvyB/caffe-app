@@ -1,8 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Coffee, Settings, ShoppingBag, Check, ChevronLeft, Snowflake, Flame, Bell, BellOff } from 'lucide-react';
+import { Plus, Trash2, Coffee, Settings, ShoppingBag, Check, ChevronLeft, Snowflake, Flame, Bell, BellOff, Lock, LogOut } from 'lucide-react';
 import { onSnapshot, setDoc } from 'firebase/firestore';
 import { MENU_DOC } from './firebase';
 import { pushSupported, checkSubscribed, subscribeToPush, unsubscribeFromPush, notifyOrder } from './push';
+
+// ============================================================
+// CHANGE THIS PASSWORD to lock the Menu / Owner panel.
+// Only people with this password can change the menu and
+// receive notifications when orders come in.
+// ============================================================
+const ADMIN_PASSWORD = 'changeme';
+const ADMIN_AUTH_KEY = 'caffe-admin-ok';
 
 const COLORS = {
   cream: '#f4ede0',
@@ -547,6 +555,111 @@ function NotifToggle() {
 }
 
 function AdminView({ addons, saveMenu }) {
+  const [authed, setAuthed] = useState(() => {
+    try {
+      return localStorage.getItem(ADMIN_AUTH_KEY) === ADMIN_PASSWORD;
+    } catch (e) {
+      return false;
+    }
+  });
+
+  if (!authed) {
+    return <PasswordGate onSuccess={() => setAuthed(true)} />;
+  }
+
+  return <AdminPanel addons={addons} saveMenu={saveMenu} onSignOut={() => {
+    try { localStorage.removeItem(ADMIN_AUTH_KEY); } catch (e) {}
+    setAuthed(false);
+  }} />;
+}
+
+function PasswordGate({ onSuccess }) {
+  const [pw, setPw] = useState('');
+  const [error, setError] = useState(false);
+
+  const submit = () => {
+    if (pw === ADMIN_PASSWORD) {
+      try { localStorage.setItem(ADMIN_AUTH_KEY, ADMIN_PASSWORD); } catch (e) {}
+      setError(false);
+      onSuccess();
+    } else {
+      setError(true);
+      setPw('');
+    }
+  };
+
+  return (
+    <div style={{ padding: '64px 24px 48px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+      <div style={{
+        width: 64, height: 64, borderRadius: '50%',
+        background: COLORS.espresso,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        marginBottom: 20,
+      }}>
+        <Lock size={26} color={COLORS.cream} />
+      </div>
+      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: '0.25em', color: COLORS.copperDark, textTransform: 'uppercase', marginBottom: 8 }}>
+        — Owner only
+      </div>
+      <h1 style={{ fontFamily: "'Fraunces', serif", fontSize: 30, fontWeight: 500, lineHeight: 1, letterSpacing: '-0.03em', margin: 0 }}>
+        Enter <em style={{ fontStyle: 'italic', color: COLORS.copperDark }}>password</em>.
+      </h1>
+      <p style={{ fontSize: 13, opacity: 0.7, marginTop: 10, marginBottom: 28, maxWidth: 280 }}>
+        The menu and order alerts are restricted to the owner.
+      </p>
+
+      <input
+        type="password"
+        autoFocus
+        value={pw}
+        onChange={(e) => { setPw(e.target.value); setError(false); }}
+        onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
+        placeholder="Password"
+        style={{
+          width: '100%',
+          maxWidth: 280,
+          padding: '14px 16px',
+          borderRadius: 14,
+          fontSize: 15,
+          textAlign: 'center',
+          outline: 'none',
+          background: COLORS.cream,
+          border: `1px solid ${error ? '#c25555' : COLORS.espresso + '20'}`,
+          fontFamily: "'DM Sans', sans-serif",
+          letterSpacing: pw ? '0.3em' : 'normal',
+        }}
+      />
+      {error && (
+        <div style={{ marginTop: 10, fontSize: 12, color: '#c25555' }}>
+          That's not the password.
+        </div>
+      )}
+      <button
+        onClick={submit}
+        disabled={!pw}
+        style={{
+          marginTop: 16,
+          width: '100%',
+          maxWidth: 280,
+          padding: '12px 0',
+          borderRadius: 14,
+          fontSize: 14,
+          fontWeight: 500,
+          background: COLORS.espresso,
+          color: COLORS.cream,
+          border: 'none',
+          cursor: pw ? 'pointer' : 'not-allowed',
+          opacity: pw ? 1 : 0.4,
+          fontFamily: 'inherit',
+        }}
+      >
+        Unlock
+      </button>
+    </div>
+  );
+}
+
+function AdminPanel({ addons, saveMenu, onSignOut }) {
   const [activeCat, setActiveCat] = useState('syrups');
   const [newName, setNewName] = useState('');
   const [newPrice, setNewPrice] = useState('');
@@ -572,12 +685,29 @@ function AdminView({ addons, saveMenu }) {
 
   return (
     <div style={{ padding: '24px 20px 48px' }}>
-      <div style={{ marginBottom: 24 }}>
-        <div style={sectionLabelStyle}>— Owner panel</div>
-        <h1 style={{ fontFamily: "'Fraunces', serif", fontSize: 34, fontWeight: 500, lineHeight: 1, letterSpacing: '-0.03em', margin: 0 }}>
-          Curate the <em style={{ fontStyle: 'italic', color: COLORS.copperDark }}>menu</em>.
-        </h1>
-        <p style={{ fontSize: 14, opacity: 0.7, marginTop: 8 }}>Changes save instantly and appear for everyone.</p>
+      <div style={{ marginBottom: 24, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={sectionLabelStyle}>— Owner panel</div>
+          <h1 style={{ fontFamily: "'Fraunces', serif", fontSize: 34, fontWeight: 500, lineHeight: 1, letterSpacing: '-0.03em', margin: 0 }}>
+            Curate the <em style={{ fontStyle: 'italic', color: COLORS.copperDark }}>menu</em>.
+          </h1>
+          <p style={{ fontSize: 14, opacity: 0.7, marginTop: 8 }}>Changes save instantly and appear for everyone.</p>
+        </div>
+        <button
+          onClick={onSignOut}
+          title="Sign out"
+          style={{
+            width: 36, height: 36, borderRadius: '50%',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: COLORS.cream,
+            color: COLORS.espressoLight,
+            border: `1px solid ${COLORS.espresso}15`,
+            cursor: 'pointer',
+            flexShrink: 0,
+          }}
+        >
+          <LogOut size={15} />
+        </button>
       </div>
 
       <NotifToggle />
