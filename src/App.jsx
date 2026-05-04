@@ -9,7 +9,7 @@ import { pushSupported, checkSubscribed, subscribeToPush, unsubscribeFromPush, n
 // Only people with this password can change the menu and
 // receive notifications when orders come in.
 // ============================================================
-const ADMIN_PASSWORD = '33g@edHUzyYb!p';
+const ADMIN_PASSWORD = 'changeme';
 const ADMIN_AUTH_KEY = 'caffe-admin-ok';
 
 const COLORS = {
