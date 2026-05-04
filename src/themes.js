@@ -13,8 +13,16 @@ const DEFAULT_THEME = {
     copperDark: '#8f5526',
     paper: '#fbf7ee',
     ice: '#5a8ea8',
-    accent: '#b8743d', // copper
+    accent: '#b8743d',
     danger: '#c25555',
+    // Primary CTA button (Place Order, Confirm, Add, etc.)
+    ctaBg: '#2a1810',
+    ctaText: '#f4ede0',
+    hotColor: '#8f5526',
+    // Selected state (drink picker, open-order cards)
+    selectedBg: '#2a1810',  // espresso
+    selectedText: '#f4ede0', // cream
+    starfield: false,
   },
 
   // Fonts
@@ -42,34 +50,44 @@ const DEFAULT_THEME = {
 const STAR_WARS_THEME = {
   id: 'starwars',
 
+  // Dark theme: surfaces are dark, "espresso" semantically means
+  // the high-contrast text color (so it's now near-white, not black).
   colors: {
-    // Reads as: deep space + gold lightsaber accents + crimson energy
-    cream: '#1a1a24',          // panel surface (dark)
-    creamDark: '#13131c',      // slightly darker panel
-    espresso: '#0a0a12',       // primary "ink" — near-black space
-    espressoLight: '#2a2a3a',  // muted dark grey-blue
-    copper: '#d4af37',         // imperial gold — selected chip
-    copperDark: '#a8862a',     // darker gold for accents
-    paper: '#05050a',          // background — deep space
-    ice: '#5cb7ff',            // hyperspace blue (iced button)
-    accent: '#d4af37',
-    danger: '#ff4d4d',         // crimson saber
+    paper: '#06060d',          // page background — deep space
+    cream: '#16161f',          // panel surface
+    creamDark: '#1f1f2c',      // raised panel / hover
+    espresso: '#f0e6c8',       // PRIMARY TEXT — warm parchment cream
+    espressoLight: '#c9bfa6',  // secondary text
+    copper: '#ffb700',         // lightsaber gold — selected chips
+    copperDark: '#ffd95a',     // bright gold accents (italic emphasis)
+    ice: '#3ea6ff',            // lightsaber blue — Jedi (iced)
+    accent: '#ffb700',
+    danger: '#ff2e2e',         // sith red
+    sithRed: '#ff2e2e',        // for the hot button
+    starfield: true,           // signal to App.jsx to render starfield
+    // Primary CTA — gold so it pops against deep space
+    ctaBg: '#ffb700',
+    ctaText: '#06060d',
+    hotColor: '#ff2e2e', // sith red lightsaber
+    // Selected drink — gold-bordered dark panel for stark contrast
+    selectedBg: '#2a2418',     // dark olive-brown (raised gold-tinted panel)
+    selectedText: '#ffb700',   // bright gold
   },
 
   fontsLink:
-    'https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Inter:wght@400;500;600&family=Share+Tech+Mono&display=swap',
-  serifFont: "'Cinzel', serif",
+    'https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Russo+One&family=Inter:wght@400;500;600&family=Share+Tech+Mono&display=swap',
+  serifFont: "'Orbitron', sans-serif",   // distinct sci-fi display
   sansFont: "'Inter', sans-serif",
   monoFont: "'Share Tech Mono', monospace",
 
-  brandName: 'Cantina',
-  tagline: 'Mos Espa · Tatooine',
-  heroPre: '— The Holomenu',
-  heroLine: ['Brew your ', 'destiny', '.'],
-  brewingLabel: 'CALIBRATING...',
-  ownerHeroPre: '— Imperial Council',
-  ownerHeroLine: ['Curate the ', 'archives', '.'],
-  notifyTitle: 'New order — A New Hope ⚔️',
+  brandName: 'CANTINA',
+  tagline: 'A long time ago...',
+  heroPre: '— Episode IV · The Holomenu',
+  heroLine: ['These are the brews you ', 'are', ' looking for.'],
+  brewingLabel: 'JUMPING TO LIGHTSPEED...',
+  ownerHeroPre: '— Imperial Archives',
+  ownerHeroLine: ['Curate the ', 'galaxy', '.'],
+  notifyTitle: 'A new order has awakened ⚔️',
 
   exclusiveDrinks: [
     {
@@ -89,7 +107,21 @@ const STAR_WARS_THEME = {
     {
       id: 'bluemilk',
       name: 'Blue Milk',
-      desc: 'Cold steamed oat milk, blueberry, almond — caffeine-free',
+      desc: 'Cold oat milk, blueberry, almond — caffeine-free',
+      group: 'milk',
+      temps: ['iced'],
+    },
+    {
+      id: 'wookiee',
+      name: 'The Wookiee',
+      desc: 'Quad-shot mocha with hazelnut and toasted marshmallow',
+      group: 'milk',
+      temps: ['hot'],
+    },
+    {
+      id: 'tatooine',
+      name: 'Twin Suns of Tatooine',
+      desc: 'Iced double shot, salted caramel, orange zest',
       group: 'milk',
       temps: ['iced'],
     },
