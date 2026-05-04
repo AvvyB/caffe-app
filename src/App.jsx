@@ -164,7 +164,11 @@ export default function App() {
         background: COLORS.paper,
         fontFamily: THEME.sansFont,
         color: COLORS.espresso,
-        backgroundImage: `radial-gradient(circle at 20% 10%, ${COLORS.creamDark}55 0%, transparent 50%), radial-gradient(circle at 80% 90%, ${COLORS.copper}15 0%, transparent 40%)`,
+        backgroundImage: COLORS.starfield
+          ? `radial-gradient(1px 1px at 20% 30%, #fff, transparent), radial-gradient(1px 1px at 75% 65%, #fff, transparent), radial-gradient(1px 1px at 35% 80%, #fff8, transparent), radial-gradient(2px 2px at 85% 15%, #fff, transparent), radial-gradient(1px 1px at 60% 40%, #fff6, transparent), radial-gradient(1px 1px at 10% 70%, #fffa, transparent), radial-gradient(2px 2px at 90% 50%, #fff, transparent), radial-gradient(1px 1px at 50% 10%, #fff7, transparent), radial-gradient(1px 1px at 25% 55%, #fff8, transparent), radial-gradient(1px 1px at 70% 90%, #fff6, transparent), radial-gradient(circle at 50% 50%, ${COLORS.copper}10 0%, transparent 60%)`
+          : `radial-gradient(circle at 20% 10%, ${COLORS.creamDark}55 0%, transparent 50%), radial-gradient(circle at 80% 90%, ${COLORS.copper}15 0%, transparent 40%)`,
+        backgroundAttachment: 'fixed',
+        backgroundSize: COLORS.starfield ? '100% 100%' : 'auto',
         paddingTop: 'env(safe-area-inset-top)',
       }}
     >
@@ -186,13 +190,13 @@ export default function App() {
               width: 32,
               height: 32,
               borderRadius: '50%',
-              background: COLORS.espresso,
+              background: COLORS.ctaBg,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            <Coffee size={16} color={COLORS.cream} />
+            <Coffee size={16} color={COLORS.ctaText} />
           </div>
           <div>
             <div style={{ fontFamily: THEME.serifFont, fontWeight: 600, fontSize: 20, lineHeight: 1, letterSpacing: '-0.02em' }}>
@@ -213,8 +217,8 @@ export default function App() {
             gap: 6,
             fontSize: 12,
             fontWeight: 500,
-            background: view === 'admin' ? COLORS.espresso : 'transparent',
-            color: view === 'admin' ? COLORS.cream : COLORS.espresso,
+            background: view === 'admin' ? COLORS.selectedBg : 'transparent',
+            color: view === 'admin' ? COLORS.selectedText : COLORS.espresso,
             border: `1px solid ${COLORS.espresso}30`,
             cursor: 'pointer',
             fontFamily: 'inherit',
@@ -251,14 +255,14 @@ function OrderView({ temp, setTemp, base, setBase, addons, selected, setSelected
   if (orderPlaced) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '96px 24px', textAlign: 'center' }}>
-        <div style={{ width: 80, height: 80, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 24, background: COLORS.espresso }}>
-          <Check size={36} color={COLORS.cream} strokeWidth={2.5} />
+        <div style={{ width: 80, height: 80, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 24, background: COLORS.ctaBg }}>
+          <Check size={36} color={COLORS.ctaText} strokeWidth={2.5} />
         </div>
         <h2 style={{ fontFamily: THEME.serifFont, fontSize: 32, fontWeight: 500, letterSpacing: '-0.02em', lineHeight: 1.1, margin: 0 }}>
           Your order is in.
         </h2>
         <p style={{ marginTop: 12, fontSize: 14, opacity: 0.7 }}>We'll have it ready in a few minutes.</p>
-        <div style={{ marginTop: 24, padding: '8px 16px', borderRadius: 999, fontFamily: THEME.monoFont, fontSize: 11, letterSpacing: '0.2em', background: COLORS.espresso, color: COLORS.cream }}>
+        <div style={{ marginTop: 24, padding: '8px 16px', borderRadius: 999, fontFamily: THEME.monoFont, fontSize: 11, letterSpacing: '0.2em', background: COLORS.selectedBg, color: COLORS.selectedText, border: `1px solid ${COLORS.copper}40` }}>
           {temp?.toUpperCase()} {baseObj?.name.toUpperCase()}
         </div>
       </div>
@@ -297,7 +301,7 @@ function OrderView({ temp, setTemp, base, setBase, addons, selected, setSelected
 
       <SectionLabel>01 · Hot or iced</SectionLabel>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 28 }}>
-        <TempButton active={temp === 'hot'} onClick={() => handleTempChange('hot')} icon={<Flame size={20} />} label="Hot" activeColor={COLORS.copperDark} />
+        <TempButton active={temp === 'hot'} onClick={() => handleTempChange('hot')} icon={<Flame size={20} />} label="Hot" activeColor={COLORS.hotColor} />
         <TempButton active={temp === 'iced'} onClick={() => handleTempChange('iced')} icon={<Snowflake size={20} />} label="Iced" activeColor={COLORS.ice} />
       </div>
 
@@ -389,11 +393,12 @@ function OrderView({ temp, setTemp, base, setBase, addons, selected, setSelected
               alignItems: 'center',
               justifyContent: 'center',
               gap: 8,
-              background: COLORS.espresso,
-              color: COLORS.cream,
+              background: COLORS.ctaBg,
+              color: COLORS.ctaText,
               border: 'none',
               cursor: 'pointer',
               fontFamily: 'inherit',
+              fontWeight: 600,
             }}
           >
             <ShoppingBag size={16} />
@@ -511,9 +516,9 @@ function NameSheet({ orderSummary, onCancel, onConfirm }) {
             padding: '14px 20px',
             borderRadius: 14,
             fontSize: 14,
-            fontWeight: 500,
-            background: COLORS.espresso,
-            color: COLORS.cream,
+            fontWeight: 600,
+            background: COLORS.ctaBg,
+            color: COLORS.ctaText,
             border: 'none',
             cursor: (!name.trim() || busy) ? 'not-allowed' : 'pointer',
             opacity: (!name.trim() || busy) ? 0.4 : 1,
@@ -563,9 +568,9 @@ function BaseButton({ item, active, onClick }) {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        background: active ? COLORS.espresso : COLORS.cream,
-        color: active ? COLORS.cream : COLORS.espresso,
-        border: `1px solid ${active ? COLORS.espresso : COLORS.espresso + '15'}`,
+        background: active ? COLORS.selectedBg : COLORS.cream,
+        color: active ? COLORS.selectedText : COLORS.espresso,
+        border: `1px solid ${active ? COLORS.copper : COLORS.espresso + '15'}`,
         cursor: 'pointer',
         fontFamily: 'inherit',
       }}
@@ -652,9 +657,9 @@ function NotifToggle() {
       padding: 14,
       borderRadius: 16,
       marginBottom: 16,
-      background: enabled ? COLORS.espresso : COLORS.cream,
-      color: enabled ? COLORS.cream : COLORS.espresso,
-      border: `1px solid ${enabled ? COLORS.espresso : COLORS.espresso + '10'}`,
+      background: enabled ? COLORS.selectedBg : COLORS.cream,
+      color: enabled ? COLORS.selectedText : COLORS.espresso,
+      border: `1px solid ${enabled ? COLORS.copper : COLORS.espresso + '10'}`,
       transition: 'all 0.2s',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
@@ -665,7 +670,7 @@ function NotifToggle() {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             flexShrink: 0,
           }}>
-            {enabled ? <Bell size={16} color={COLORS.paper} /> : <BellOff size={16} color={COLORS.espressoLight} />}
+            {enabled ? <Bell size={16} color={COLORS.ctaText} /> : <BellOff size={16} color={COLORS.espressoLight} />}
           </div>
           <div style={{ minWidth: 0 }}>
             <div style={{ fontFamily: THEME.serifFont, fontSize: 15, fontWeight: 500 }}>
@@ -683,9 +688,9 @@ function NotifToggle() {
             padding: '8px 14px',
             borderRadius: 999,
             fontSize: 12,
-            fontWeight: 500,
-            background: enabled ? COLORS.cream : COLORS.espresso,
-            color: enabled ? COLORS.espresso : COLORS.cream,
+            fontWeight: 600,
+            background: enabled ? COLORS.cream : COLORS.ctaBg,
+            color: enabled ? COLORS.espresso : COLORS.ctaText,
             border: 'none',
             cursor: busy ? 'wait' : 'pointer',
             opacity: busy ? 0.5 : 1,
@@ -702,8 +707,8 @@ function NotifToggle() {
           fontSize: 12,
           padding: '8px 10px',
           borderRadius: 8,
-          background: enabled ? COLORS.espressoLight : '#f8d7d7',
-          color: enabled ? COLORS.cream : '#8b2c2c',
+          background: COLORS.danger + '22',
+          color: COLORS.danger,
         }}>
           {error}
         </div>
@@ -791,8 +796,9 @@ function OpenOrders() {
               style={{
                 padding: '14px 16px',
                 borderRadius: 16,
-                background: COLORS.espresso,
-                color: COLORS.cream,
+                background: COLORS.selectedBg,
+                color: COLORS.selectedText,
+                border: `1px solid ${COLORS.copper}40`,
                 display: 'flex',
                 gap: 12,
                 alignItems: 'flex-start',
@@ -880,11 +886,11 @@ function PasswordGate({ onSuccess }) {
     <div style={{ padding: '64px 24px 48px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
       <div style={{
         width: 64, height: 64, borderRadius: '50%',
-        background: COLORS.espresso,
+        background: COLORS.ctaBg,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         marginBottom: 20,
       }}>
-        <Lock size={26} color={COLORS.cream} />
+        <Lock size={26} color={COLORS.ctaText} />
       </div>
       <div style={{ fontFamily: THEME.monoFont, fontSize: 10, letterSpacing: '0.25em', color: COLORS.copperDark, textTransform: 'uppercase', marginBottom: 8 }}>
         — Owner only
@@ -932,9 +938,9 @@ function PasswordGate({ onSuccess }) {
           padding: '12px 0',
           borderRadius: 14,
           fontSize: 14,
-          fontWeight: 500,
-          background: COLORS.espresso,
-          color: COLORS.cream,
+          fontWeight: 600,
+          background: COLORS.ctaBg,
+          color: COLORS.ctaText,
           border: 'none',
           cursor: pw ? 'pointer' : 'not-allowed',
           opacity: pw ? 1 : 0.4,
@@ -1008,8 +1014,8 @@ function AdminPanel({ addons, saveMenu, onSignOut }) {
               borderRadius: 12,
               fontSize: 11,
               fontWeight: 500,
-              background: activeCat === cat ? COLORS.espresso : 'transparent',
-              color: activeCat === cat ? COLORS.cream : COLORS.espresso,
+              background: activeCat === cat ? COLORS.selectedBg : 'transparent',
+              color: activeCat === cat ? COLORS.selectedText : COLORS.espresso,
               border: 'none',
               cursor: 'pointer',
               fontFamily: 'inherit',
@@ -1041,9 +1047,9 @@ function AdminPanel({ addons, saveMenu, onSignOut }) {
             justifyContent: 'center',
             gap: 8,
             fontSize: 14,
-            fontWeight: 500,
-            background: COLORS.espresso,
-            color: COLORS.cream,
+            fontWeight: 600,
+            background: COLORS.ctaBg,
+            color: COLORS.ctaText,
             opacity: !newName.trim() ? 0.4 : 1,
             border: 'none',
             cursor: 'pointer',
