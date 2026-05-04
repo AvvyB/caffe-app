@@ -5,7 +5,7 @@ import { db } from './firebase';
 // ============================================================
 // PASTE YOUR VAPID PUBLIC KEY BELOW (see README Part 5)
 // ============================================================
-export const VAPID_PUBLIC_KEY = 'PASTE_YOUR_VAPID_PUBLIC_KEY';
+export const VAPID_PUBLIC_KEY = 'BBTNSeHm2TxcRQgZ_yyDhmP82L2BMPPNWuebX9zn-DQARCU3b7wxS9Ax0N3qXR9EM4kQJtv7st58pzbGpT3tSXo';
 
 const DEVICE_ID_KEY = 'caffe-device-id';
 
