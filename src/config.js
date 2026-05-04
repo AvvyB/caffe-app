@@ -9,5 +9,5 @@ export const ADMIN_PASSWORD = '33g@edHUzyYb!p';
  
 // Switch the look of the app.
 // Options: 'default'  ·  'starwars'
-export const THEME_NAME = 'default';
+export const THEME_NAME = 'starwars';
  
