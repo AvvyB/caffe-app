@@ -3,29 +3,17 @@ import { Plus, Trash2, Coffee, Settings, ShoppingBag, Check, ChevronLeft, Snowfl
 import { onSnapshot, setDoc, addDoc, updateDoc, collection, query, where, orderBy, doc, serverTimestamp } from 'firebase/firestore';
 import { MENU_DOC, db } from './firebase';
 import { pushSupported, checkSubscribed, subscribeToPush, unsubscribeFromPush, notifyOrder } from './push';
+import { ADMIN_PASSWORD, THEME_NAME } from './config';
+import { getTheme } from './themes';
 
-// ============================================================
-// CHANGE THIS PASSWORD to lock the Menu / Owner panel.
-// Only people with this password can change the menu and
-// receive notifications when orders come in.
-// ============================================================
-const ADMIN_PASSWORD = '33g@edHUzyYb!p';
 const ADMIN_AUTH_KEY = 'caffe-admin-ok';
 
-const COLORS = {
-  cream: '#f4ede0',
-  creamDark: '#ebe2d2',
-  espresso: '#2a1810',
-  espressoLight: '#4a2e1f',
-  copper: '#b8743d',
-  copperDark: '#8f5526',
-  paper: '#fbf7ee',
-  ice: '#5a8ea8',
-};
+// Active theme — driven by THEME_NAME in config.js
+const THEME = getTheme(THEME_NAME);
+const COLORS = THEME.colors;
+const FONTS_LINK = THEME.fontsLink;
 
-const FONTS_LINK = 'https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap';
-
-const ESPRESSO_BASES = [
+const BASE_DRINKS = [
   { id: 'single', name: 'Single Shot', desc: 'One pure shot of espresso', group: 'shots', temps: ['hot'] },
   { id: 'doppio', name: 'Doppio', desc: 'A double shot, twice the depth', group: 'shots', temps: ['hot'] },
   { id: 'americano', name: 'Americano', desc: 'Espresso lengthened with water', group: 'shots', temps: ['hot', 'iced'] },
@@ -35,6 +23,9 @@ const ESPRESSO_BASES = [
   { id: 'latte', name: 'Caffè Latte', desc: 'Smooth espresso with milk', group: 'milk', temps: ['hot', 'iced'] },
   { id: 'mocha', name: 'Mocha', desc: 'Espresso, chocolate, and milk', group: 'milk', temps: ['hot', 'iced'] },
 ];
+
+// Final drink list: base + any theme-exclusive drinks
+const ESPRESSO_BASES = [...BASE_DRINKS, ...(THEME.exclusiveDrinks || [])];
 
 const DEFAULT_ADDONS = {
   syrups: [
@@ -153,7 +144,7 @@ export default function App() {
     }
 
     // Push notification
-    notifyOrder(`${trimmed} — ${orderText}`);
+    notifyOrder(`${trimmed} — ${orderText}`, THEME.notifyTitle);
 
     setAskingName(false);
     setOrderPlaced(true);
@@ -171,7 +162,7 @@ export default function App() {
         minHeight: '100vh',
         width: '100%',
         background: COLORS.paper,
-        fontFamily: "'DM Sans', sans-serif",
+        fontFamily: THEME.sansFont,
         color: COLORS.espresso,
         backgroundImage: `radial-gradient(circle at 20% 10%, ${COLORS.creamDark}55 0%, transparent 50%), radial-gradient(circle at 80% 90%, ${COLORS.copper}15 0%, transparent 40%)`,
         paddingTop: 'env(safe-area-inset-top)',
@@ -204,11 +195,11 @@ export default function App() {
             <Coffee size={16} color={COLORS.cream} />
           </div>
           <div>
-            <div style={{ fontFamily: "'Fraunces', serif", fontWeight: 600, fontSize: 20, lineHeight: 1, letterSpacing: '-0.02em' }}>
-              Caffè
+            <div style={{ fontFamily: THEME.serifFont, fontWeight: 600, fontSize: 20, lineHeight: 1, letterSpacing: '-0.02em' }}>
+              {THEME.brandName}
             </div>
-            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, letterSpacing: '0.2em', color: COLORS.copperDark, textTransform: 'uppercase', marginTop: 2 }}>
-              Est. Today
+            <div style={{ fontFamily: THEME.monoFont, fontSize: 9, letterSpacing: '0.2em', color: COLORS.copperDark, textTransform: 'uppercase', marginTop: 2 }}>
+              {THEME.tagline}
             </div>
           </div>
         </div>
@@ -243,8 +234,8 @@ export default function App() {
 
       {loading ? (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '128px 0', color: COLORS.copperDark }}>
-          <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: '0.2em' }}>
-            BREWING...
+          <div style={{ fontFamily: THEME.monoFont, fontSize: 11, letterSpacing: '0.2em' }}>
+            {THEME.brewingLabel}
           </div>
         </div>
       ) : view === 'order' ? (
@@ -263,11 +254,11 @@ function OrderView({ temp, setTemp, base, setBase, addons, selected, setSelected
         <div style={{ width: 80, height: 80, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 24, background: COLORS.espresso }}>
           <Check size={36} color={COLORS.cream} strokeWidth={2.5} />
         </div>
-        <h2 style={{ fontFamily: "'Fraunces', serif", fontSize: 32, fontWeight: 500, letterSpacing: '-0.02em', lineHeight: 1.1, margin: 0 }}>
+        <h2 style={{ fontFamily: THEME.serifFont, fontSize: 32, fontWeight: 500, letterSpacing: '-0.02em', lineHeight: 1.1, margin: 0 }}>
           Your order is in.
         </h2>
         <p style={{ marginTop: 12, fontSize: 14, opacity: 0.7 }}>We'll have it ready in a few minutes.</p>
-        <div style={{ marginTop: 24, padding: '8px 16px', borderRadius: 999, fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: '0.2em', background: COLORS.espresso, color: COLORS.cream }}>
+        <div style={{ marginTop: 24, padding: '8px 16px', borderRadius: 999, fontFamily: THEME.monoFont, fontSize: 11, letterSpacing: '0.2em', background: COLORS.espresso, color: COLORS.cream }}>
           {temp?.toUpperCase()} {baseObj?.name.toUpperCase()}
         </div>
       </div>
@@ -298,9 +289,9 @@ function OrderView({ temp, setTemp, base, setBase, addons, selected, setSelected
   return (
     <div style={{ padding: '24px 20px 128px' }}>
       <div style={{ marginBottom: 28 }}>
-        <div style={sectionLabelStyle}>— The Menu</div>
-        <h1 style={{ fontFamily: "'Fraunces', serif", fontSize: 40, fontWeight: 500, lineHeight: 0.95, letterSpacing: '-0.03em', margin: 0 }}>
-          Build your <em style={{ fontStyle: 'italic', color: COLORS.copperDark }}>perfect</em> shot.
+        <div style={sectionLabelStyle}>{THEME.heroPre}</div>
+        <h1 style={{ fontFamily: THEME.serifFont, fontSize: 40, fontWeight: 500, lineHeight: 0.95, letterSpacing: '-0.03em', margin: 0 }}>
+          {THEME.heroLine[0]}<em style={{ fontStyle: 'italic', color: COLORS.copperDark }}>{THEME.heroLine[1]}</em>{THEME.heroLine[2]}
         </h1>
       </div>
 
@@ -468,7 +459,7 @@ function NameSheet({ orderSummary, onCancel, onConfirm }) {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
           <div style={{ flex: 1 }}>
             <div style={sectionLabelStyle}>— Last step</div>
-            <h2 style={{ fontFamily: "'Fraunces', serif", fontSize: 28, fontWeight: 500, lineHeight: 1, letterSpacing: '-0.02em', margin: 0 }}>
+            <h2 style={{ fontFamily: THEME.serifFont, fontSize: 28, fontWeight: 500, lineHeight: 1, letterSpacing: '-0.02em', margin: 0 }}>
               What's your <em style={{ fontStyle: 'italic', color: COLORS.copperDark }}>name</em>?
             </h2>
             <p style={{ fontSize: 13, opacity: 0.7, marginTop: 8, marginBottom: 0 }}>
@@ -506,7 +497,7 @@ function NameSheet({ orderSummary, onCancel, onConfirm }) {
             outline: 'none',
             background: COLORS.cream,
             border: `1px solid ${COLORS.espresso}20`,
-            fontFamily: "'DM Sans', sans-serif",
+            fontFamily: THEME.sansFont,
             marginBottom: 12,
             boxSizing: 'border-box',
           }}
@@ -555,7 +546,7 @@ function TempButton({ active, onClick, icon, label, activeColor }) {
       }}
     >
       {icon}
-      <span style={{ fontFamily: "'Fraunces', serif", fontSize: 17, fontWeight: 500, letterSpacing: '-0.01em' }}>{label}</span>
+      <span style={{ fontFamily: THEME.serifFont, fontSize: 17, fontWeight: 500, letterSpacing: '-0.01em' }}>{label}</span>
     </button>
   );
 }
@@ -580,7 +571,7 @@ function BaseButton({ item, active, onClick }) {
       }}
     >
       <div style={{ flex: 1 }}>
-        <div style={{ fontFamily: "'Fraunces', serif", fontSize: 17, fontWeight: 500, letterSpacing: '-0.01em' }}>{item.name}</div>
+        <div style={{ fontFamily: THEME.serifFont, fontSize: 17, fontWeight: 500, letterSpacing: '-0.01em' }}>{item.name}</div>
         <div style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }}>{item.desc}</div>
       </div>
     </button>
@@ -589,14 +580,14 @@ function BaseButton({ item, active, onClick }) {
 
 function SubLabel({ children }) {
   return (
-    <div style={{ fontFamily: "'Fraunces', serif", fontStyle: 'italic', fontSize: 13, color: COLORS.copperDark, marginBottom: 8, marginTop: 2 }}>
+    <div style={{ fontFamily: THEME.serifFont, fontStyle: 'italic', fontSize: 13, color: COLORS.copperDark, marginBottom: 8, marginTop: 2 }}>
       {children}
     </div>
   );
 }
 
 const sectionLabelStyle = {
-  fontFamily: "'JetBrains Mono', monospace",
+  fontFamily: THEME.monoFont,
   fontSize: 10,
   letterSpacing: '0.2em',
   color: COLORS.copperDark,
@@ -651,7 +642,7 @@ function NotifToggle() {
         fontSize: 13,
         opacity: 0.8,
       }}>
-        Notifications aren't supported on this browser. On iPhone, add Caffè to your home screen and open it from there.
+        Notifications aren't supported on this browser. On iPhone, add {THEME.brandName} to your home screen and open it from there.
       </div>
     );
   }
@@ -677,7 +668,7 @@ function NotifToggle() {
             {enabled ? <Bell size={16} color={COLORS.paper} /> : <BellOff size={16} color={COLORS.espressoLight} />}
           </div>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontFamily: "'Fraunces', serif", fontSize: 15, fontWeight: 500 }}>
+            <div style={{ fontFamily: THEME.serifFont, fontSize: 15, fontWeight: 500 }}>
               Order alerts
             </div>
             <div style={{ fontSize: 12, opacity: 0.75, marginTop: 2 }}>
@@ -809,10 +800,10 @@ function OpenOrders() {
             >
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
-                  <div style={{ fontFamily: "'Fraunces', serif", fontSize: 18, fontWeight: 600, letterSpacing: '-0.01em' }}>
+                  <div style={{ fontFamily: THEME.serifFont, fontSize: 18, fontWeight: 600, letterSpacing: '-0.01em' }}>
                     {o.customerName || 'Anonymous'}
                   </div>
-                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: '0.15em', opacity: 0.6, textTransform: 'uppercase' }}>
+                  <div style={{ fontFamily: THEME.monoFont, fontSize: 10, letterSpacing: '0.15em', opacity: 0.6, textTransform: 'uppercase' }}>
                     {fmtTime(o.createdAt)}
                   </div>
                 </div>
@@ -895,10 +886,10 @@ function PasswordGate({ onSuccess }) {
       }}>
         <Lock size={26} color={COLORS.cream} />
       </div>
-      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: '0.25em', color: COLORS.copperDark, textTransform: 'uppercase', marginBottom: 8 }}>
+      <div style={{ fontFamily: THEME.monoFont, fontSize: 10, letterSpacing: '0.25em', color: COLORS.copperDark, textTransform: 'uppercase', marginBottom: 8 }}>
         — Owner only
       </div>
-      <h1 style={{ fontFamily: "'Fraunces', serif", fontSize: 30, fontWeight: 500, lineHeight: 1, letterSpacing: '-0.03em', margin: 0 }}>
+      <h1 style={{ fontFamily: THEME.serifFont, fontSize: 30, fontWeight: 500, lineHeight: 1, letterSpacing: '-0.03em', margin: 0 }}>
         Enter <em style={{ fontStyle: 'italic', color: COLORS.copperDark }}>password</em>.
       </h1>
       <p style={{ fontSize: 13, opacity: 0.7, marginTop: 10, marginBottom: 28, maxWidth: 280 }}>
@@ -922,7 +913,7 @@ function PasswordGate({ onSuccess }) {
           outline: 'none',
           background: COLORS.cream,
           border: `1px solid ${error ? '#c25555' : COLORS.espresso + '20'}`,
-          fontFamily: "'DM Sans', sans-serif",
+          fontFamily: THEME.sansFont,
           letterSpacing: pw ? '0.3em' : 'normal',
         }}
       />
@@ -981,9 +972,9 @@ function AdminPanel({ addons, saveMenu, onSignOut }) {
     <div style={{ padding: '24px 20px 48px' }}>
       <div style={{ marginBottom: 24, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={sectionLabelStyle}>— Owner panel</div>
-          <h1 style={{ fontFamily: "'Fraunces', serif", fontSize: 34, fontWeight: 500, lineHeight: 1, letterSpacing: '-0.03em', margin: 0 }}>
-            Curate the <em style={{ fontStyle: 'italic', color: COLORS.copperDark }}>menu</em>.
+          <div style={sectionLabelStyle}>{THEME.ownerHeroPre}</div>
+          <h1 style={{ fontFamily: THEME.serifFont, fontSize: 34, fontWeight: 500, lineHeight: 1, letterSpacing: '-0.03em', margin: 0 }}>
+            {THEME.ownerHeroLine[0]}<em style={{ fontStyle: 'italic', color: COLORS.copperDark }}>{THEME.ownerHeroLine[1]}</em>{THEME.ownerHeroLine[2]}
           </h1>
           <p style={{ fontSize: 14, opacity: 0.7, marginTop: 8 }}>Changes save instantly and appear for everyone.</p>
         </div>
@@ -1036,7 +1027,7 @@ function AdminPanel({ addons, saveMenu, onSignOut }) {
           onChange={(e) => setNewName(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') addItem(); }}
           placeholder={`Name (e.g. ${placeholderName})`}
-          style={{ width: '100%', padding: '10px 12px', borderRadius: 12, fontSize: 14, outline: 'none', minWidth: 0, background: COLORS.paper, border: `1px solid ${COLORS.espresso}20`, fontFamily: "'DM Sans', sans-serif", marginBottom: 8, boxSizing: 'border-box' }}
+          style={{ width: '100%', padding: '10px 12px', borderRadius: 12, fontSize: 14, outline: 'none', minWidth: 0, background: COLORS.paper, border: `1px solid ${COLORS.espresso}20`, fontFamily: THEME.sansFont, marginBottom: 8, boxSizing: 'border-box' }}
         />
         <button
           onClick={addItem}
@@ -1072,7 +1063,7 @@ function AdminPanel({ addons, saveMenu, onSignOut }) {
         ) : (
           addons[activeCat].map((item) => (
             <div key={item.id} style={{ padding: '12px 16px', borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: COLORS.cream, border: `1px solid ${COLORS.espresso}10` }}>
-              <div style={{ fontFamily: "'Fraunces', serif", fontSize: 16, fontWeight: 500 }}>{item.name}</div>
+              <div style={{ fontFamily: THEME.serifFont, fontSize: 16, fontWeight: 500 }}>{item.name}</div>
               <button
                 onClick={() => removeItem(item.id)}
                 style={{ width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: COLORS.paper, color: COLORS.espressoLight, border: 'none', cursor: 'pointer' }}
