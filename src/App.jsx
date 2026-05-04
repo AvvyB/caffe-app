@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Coffee, Settings, ShoppingBag, Check, ChevronLeft, Snowflake, Flame, Bell, BellOff, Lock, LogOut } from 'lucide-react';
-import { onSnapshot, setDoc } from 'firebase/firestore';
-import { MENU_DOC } from './firebase';
+import { Plus, Trash2, Coffee, Settings, ShoppingBag, Check, ChevronLeft, Snowflake, Flame, Bell, BellOff, Lock, LogOut, X, Inbox } from 'lucide-react';
+import { onSnapshot, setDoc, addDoc, updateDoc, collection, query, where, orderBy, doc, serverTimestamp } from 'firebase/firestore';
+import { MENU_DOC, db } from './firebase';
 import { pushSupported, checkSubscribed, subscribeToPush, unsubscribeFromPush, notifyOrder } from './push';
 
 // ============================================================
@@ -9,7 +9,7 @@ import { pushSupported, checkSubscribed, subscribeToPush, unsubscribeFromPush, n
 // Only people with this password can change the menu and
 // receive notifications when orders come in.
 // ============================================================
-const ADMIN_PASSWORD = '33g@edHUzyYb!p';
+const ADMIN_PASSWORD = 'changeme';
 const ADMIN_AUTH_KEY = 'caffe-admin-ok';
 
 const COLORS = {
@@ -73,6 +73,7 @@ export default function App() {
   const [base, setBase] = useState(null);
   const [selected, setSelected] = useState({ syrups: [], spices: [], milks: [], extras: [] });
   const [orderPlaced, setOrderPlaced] = useState(false);
+  const [askingName, setAskingName] = useState(false);
 
   // Realtime sync from Firebase
   useEffect(() => {
@@ -114,19 +115,43 @@ export default function App() {
 
   const baseObj = ESPRESSO_BASES.find((b) => b.id === base);
 
-  const placeOrder = () => {
-    // Build a readable summary for the notification
+  // Step 1 — user tapped "Place order" — open the name sheet
+  const requestPlaceOrder = () => setAskingName(true);
+
+  // Step 2 — name confirmed — save to Firestore, send notification, show success
+  const submitOrder = async (customerName) => {
+    const trimmed = (customerName || '').trim() || 'Anonymous';
+
+    // Build readable strings
     const tempLabel = temp ? temp.charAt(0).toUpperCase() + temp.slice(1) : '';
-    const parts = [];
+    const addonsList = [];
     ['syrups', 'spices', 'milks', 'extras'].forEach((cat) => {
       selected[cat].forEach((id) => {
         const item = addons[cat]?.find((a) => a.id === id);
-        if (item) parts.push(item.name);
+        if (item) addonsList.push(item.name);
       });
     });
-    const orderText = `${tempLabel} ${baseObj?.name || ''}${parts.length ? ' · ' + parts.join(', ') : ''}`.trim();
-    notifyOrder(orderText);
+    const orderText = `${tempLabel} ${baseObj?.name || ''}${addonsList.length ? ' · ' + addonsList.join(', ') : ''}`.trim();
 
+    // Save to Firestore for the open-orders list
+    try {
+      await addDoc(collection(db, 'orders'), {
+        customerName: trimmed,
+        temp,
+        drink: baseObj?.name || '',
+        addons: addonsList,
+        summary: orderText,
+        status: 'open',
+        createdAt: serverTimestamp(),
+      });
+    } catch (e) {
+      console.error('order save failed', e);
+    }
+
+    // Push notification
+    notifyOrder(`${trimmed} — ${orderText}`);
+
+    setAskingName(false);
     setOrderPlaced(true);
     setTimeout(() => {
       setOrderPlaced(false);
@@ -219,7 +244,7 @@ export default function App() {
           </div>
         </div>
       ) : view === 'order' ? (
-        <OrderView {...{ temp, setTemp, base, setBase, addons, selected, toggleSelected, baseObj, placeOrder, orderPlaced }} />
+        <OrderView {...{ temp, setTemp, base, setBase, addons, selected, toggleSelected, baseObj, requestPlaceOrder, submitOrder, askingName, setAskingName, orderPlaced }} />
       ) : (
         <AdminView addons={addons} saveMenu={saveMenu} />
       )}
@@ -227,7 +252,7 @@ export default function App() {
   );
 }
 
-function OrderView({ temp, setTemp, base, setBase, addons, selected, toggleSelected, baseObj, placeOrder, orderPlaced }) {
+function OrderView({ temp, setTemp, base, setBase, addons, selected, toggleSelected, baseObj, requestPlaceOrder, submitOrder, askingName, setAskingName, orderPlaced }) {
   if (orderPlaced) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '96px 24px', textAlign: 'center' }}>
@@ -347,7 +372,7 @@ function OrderView({ temp, setTemp, base, setBase, addons, selected, toggleSelec
           }}
         >
           <button
-            onClick={placeOrder}
+            onClick={requestPlaceOrder}
             style={{
               width: '100%',
               padding: '14px 20px',
@@ -368,6 +393,128 @@ function OrderView({ temp, setTemp, base, setBase, addons, selected, toggleSelec
           </button>
         </div>
       )}
+
+      {askingName && (
+        <NameSheet
+          orderSummary={`${temp ? temp[0].toUpperCase() + temp.slice(1) : ''} ${baseObj?.name || ''}`.trim()}
+          onCancel={() => setAskingName(false)}
+          onConfirm={submitOrder}
+        />
+      )}
+    </div>
+  );
+}
+
+function NameSheet({ orderSummary, onCancel, onConfirm }) {
+  const [name, setName] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const submit = async () => {
+    if (busy) return;
+    setBusy(true);
+    await onConfirm(name);
+  };
+
+  return (
+    <div
+      onClick={onCancel}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(26, 15, 8, 0.55)',
+        display: 'flex',
+        alignItems: 'flex-end',
+        justifyContent: 'center',
+        zIndex: 100,
+        backdropFilter: 'blur(4px)',
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: '100%',
+          maxWidth: 500,
+          background: COLORS.paper,
+          borderTopLeftRadius: 24,
+          borderTopRightRadius: 24,
+          padding: '24px 20px calc(24px + env(safe-area-inset-bottom))',
+          boxShadow: '0 -10px 40px rgba(0,0,0,0.2)',
+          animation: 'slideUp 0.2s ease-out',
+        }}
+      >
+        <style>{`
+          @keyframes slideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+          }
+        `}</style>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+          <div style={{ flex: 1 }}>
+            <div style={sectionLabelStyle}>— Last step</div>
+            <h2 style={{ fontFamily: "'Fraunces', serif", fontSize: 28, fontWeight: 500, lineHeight: 1, letterSpacing: '-0.02em', margin: 0 }}>
+              What's your <em style={{ fontStyle: 'italic', color: COLORS.copperDark }}>name</em>?
+            </h2>
+            <p style={{ fontSize: 13, opacity: 0.7, marginTop: 8, marginBottom: 0 }}>
+              {orderSummary}
+            </p>
+          </div>
+          <button
+            onClick={onCancel}
+            style={{
+              width: 32, height: 32, borderRadius: '50%',
+              background: COLORS.cream,
+              color: COLORS.espressoLight,
+              border: 'none',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer',
+              flexShrink: 0,
+            }}
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        <input
+          autoFocus
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter' && name.trim()) submit(); }}
+          placeholder="First name"
+          maxLength={40}
+          style={{
+            width: '100%',
+            padding: '14px 16px',
+            borderRadius: 14,
+            fontSize: 16,
+            outline: 'none',
+            background: COLORS.cream,
+            border: `1px solid ${COLORS.espresso}20`,
+            fontFamily: "'DM Sans', sans-serif",
+            marginBottom: 12,
+            boxSizing: 'border-box',
+          }}
+        />
+
+        <button
+          onClick={submit}
+          disabled={!name.trim() || busy}
+          style={{
+            width: '100%',
+            padding: '14px 20px',
+            borderRadius: 14,
+            fontSize: 14,
+            fontWeight: 500,
+            background: COLORS.espresso,
+            color: COLORS.cream,
+            border: 'none',
+            cursor: (!name.trim() || busy) ? 'not-allowed' : 'pointer',
+            opacity: (!name.trim() || busy) ? 0.4 : 1,
+            fontFamily: 'inherit',
+          }}
+        >
+          {busy ? 'Sending...' : 'Confirm order'}
+        </button>
+      </div>
     </div>
   );
 }
@@ -557,6 +704,136 @@ function NotifToggle() {
   );
 }
 
+function OpenOrders() {
+  const [orders, setOrders] = useState([]);
+  const [busyId, setBusyId] = useState(null);
+
+  useEffect(() => {
+    const q = query(
+      collection(db, 'orders'),
+      where('status', '==', 'open'),
+      orderBy('createdAt', 'desc')
+    );
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        setOrders(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      },
+      (err) => {
+        console.error('orders listen failed', err);
+      }
+    );
+    return unsub;
+  }, []);
+
+  const completeOrder = async (id) => {
+    setBusyId(id);
+    try {
+      await updateDoc(doc(db, 'orders', id), {
+        status: 'completed',
+        completedAt: serverTimestamp(),
+      });
+    } catch (e) {
+      console.error('complete failed', e);
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const fmtTime = (ts) => {
+    if (!ts || !ts.toDate) return '';
+    const d = ts.toDate();
+    const now = new Date();
+    const diffMs = now - d;
+    const mins = Math.floor(diffMs / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    return d.toLocaleDateString();
+  };
+
+  return (
+    <div style={{ marginBottom: 24 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <div style={sectionLabelStyle}>
+          <Inbox size={11} style={{ display: 'inline', marginRight: 6, verticalAlign: '-1px' }} />
+          Open orders · {orders.length}
+        </div>
+      </div>
+
+      {orders.length === 0 ? (
+        <div style={{
+          textAlign: 'center',
+          padding: '28px 16px',
+          borderRadius: 16,
+          fontSize: 13,
+          opacity: 0.6,
+          background: COLORS.cream,
+          fontStyle: 'italic',
+          border: `1px solid ${COLORS.espresso}10`,
+        }}>
+          No open orders. You're all caught up.
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {orders.map((o) => (
+            <div
+              key={o.id}
+              style={{
+                padding: '14px 16px',
+                borderRadius: 16,
+                background: COLORS.espresso,
+                color: COLORS.cream,
+                display: 'flex',
+                gap: 12,
+                alignItems: 'flex-start',
+              }}
+            >
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
+                  <div style={{ fontFamily: "'Fraunces', serif", fontSize: 18, fontWeight: 600, letterSpacing: '-0.01em' }}>
+                    {o.customerName || 'Anonymous'}
+                  </div>
+                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: '0.15em', opacity: 0.6, textTransform: 'uppercase' }}>
+                    {fmtTime(o.createdAt)}
+                  </div>
+                </div>
+                <div style={{ fontSize: 13, opacity: 0.85, lineHeight: 1.4 }}>
+                  {o.summary}
+                </div>
+              </div>
+              <button
+                onClick={() => completeOrder(o.id)}
+                disabled={busyId === o.id}
+                style={{
+                  padding: '8px 14px',
+                  borderRadius: 999,
+                  fontSize: 12,
+                  fontWeight: 500,
+                  background: COLORS.copper,
+                  color: COLORS.paper,
+                  border: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  cursor: busyId === o.id ? 'wait' : 'pointer',
+                  opacity: busyId === o.id ? 0.5 : 1,
+                  fontFamily: 'inherit',
+                  flexShrink: 0,
+                  alignSelf: 'flex-start',
+                }}
+              >
+                <Check size={13} /> Done
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AdminView({ addons, saveMenu }) {
   const [authed, setAuthed] = useState(() => {
     try {
@@ -711,6 +988,7 @@ function AdminPanel({ addons, saveMenu, onSignOut }) {
       </div>
 
       <NotifToggle />
+      <OpenOrders />
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4, marginBottom: 20, padding: 4, borderRadius: 16, background: COLORS.cream }}>
         {Object.keys(CATEGORY_LABELS).map((cat) => (
