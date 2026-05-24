@@ -1,7 +1,7 @@
 // Theme definitions. Add more here, then point THEME_NAME at it in config.js.
 
 const DEFAULT_THEME = {
-  id: 'starwars',
+  id: 'default',
 
   // Colors
   colors: {
