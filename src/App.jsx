@@ -21,7 +21,9 @@ const BASE_DRINKS = [
   { id: 'cappuccino', name: 'Cappuccino', desc: 'Equal parts espresso, milk, and foam', group: 'milk', temps: ['hot'] },
   { id: 'flatwhite', name: 'Flat White', desc: 'Velvety microfoam over a double shot', group: 'milk', temps: ['hot'] },
   { id: 'latte', name: 'Caffè Latte', desc: 'Smooth espresso with milk', group: 'milk', temps: ['hot', 'iced'] },
+  { id: 'breve', name: 'Breve', desc: 'Espresso with steamed half-and-half', group: 'milk', temps: ['hot', 'iced'] },
   { id: 'mocha', name: 'Mocha', desc: 'Espresso, chocolate, and milk', group: 'milk', temps: ['hot', 'iced'] },
+  { id: 'frappuccino', name: 'Frappuccino', desc: 'Blended espresso with milk and ice', group: 'milk', temps: ['iced'] },
 ];
 
 // Final drink list: base + any theme-exclusive drinks
@@ -38,11 +40,6 @@ const DEFAULT_ADDONS = {
     { id: 'sp1', name: 'Pumpkin Spice', price: 0.75 },
     { id: 'sp2', name: 'Cinnamon', price: 0.5 },
   ],
-  milks: [
-    { id: 'm1', name: 'Whole Milk', price: 0.5 },
-    { id: 'm2', name: 'Oat Milk', price: 0.75 },
-    { id: 'm3', name: 'Almond Milk', price: 0.75 },
-  ],
   extras: [
     { id: 'e1', name: 'Extra Shot', price: 1.25 },
     { id: 'e2', name: 'Whipped Cream', price: 0.5 },
@@ -52,7 +49,6 @@ const DEFAULT_ADDONS = {
 const CATEGORY_LABELS = {
   syrups: 'Syrups',
   spices: 'Spice & Seasonal',
-  milks: 'Milk',
   extras: 'Extras',
 };
 
@@ -62,7 +58,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [temp, setTemp] = useState(null);
   const [base, setBase] = useState(null);
-  const [selected, setSelected] = useState({ syrups: [], spices: [], milks: [], extras: [] });
+  const [selected, setSelected] = useState({ syrups: [], spices: [], extras: [] });
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [askingName, setAskingName] = useState(false);
 
@@ -115,10 +111,7 @@ export default function App() {
 
     // Build readable strings
     const tempLabel = temp ? temp.charAt(0).toUpperCase() + temp.slice(1) : '';
-    const isShot = baseObj?.group === 'shots';
-    const cats = isShot
-      ? ['syrups', 'spices', 'extras']
-      : ['syrups', 'spices', 'milks', 'extras'];
+    const cats = ['syrups', 'spices', 'extras'];
     const addonsList = [];
     cats.forEach((cat) => {
       selected[cat].forEach((id) => {
@@ -152,7 +145,7 @@ export default function App() {
       setOrderPlaced(false);
       setTemp(null);
       setBase(null);
-      setSelected({ syrups: [], spices: [], milks: [], extras: [] });
+      setSelected({ syrups: [], spices: [], extras: [] });
     }, 3500);
   };
 
@@ -284,10 +277,6 @@ function OrderView({ temp, setTemp, base, setBase, addons, selected, setSelected
   // Clear milk selections if switching to a shot (since milk options will hide)
   const pickBase = (id) => {
     setBase(id);
-    const newDrink = ESPRESSO_BASES.find((b) => b.id === id);
-    if (newDrink?.group === 'shots') {
-      setSelected((s) => ({ ...s, milks: [] }));
-    }
   };
 
   return (
@@ -331,10 +320,7 @@ function OrderView({ temp, setTemp, base, setBase, addons, selected, setSelected
         </>
       )}
 
-      {temp && base && (() => {
-        const isShot = baseObj?.group === 'shots';
-        const cats = isShot ? ['syrups', 'spices', 'extras'] : ['syrups', 'spices', 'milks', 'extras'];
-        return cats.map((cat, i) => (
+      {temp && base && ['syrups', 'spices', 'extras'].map((cat, i) => (
         addons[cat]?.length > 0 && (
           <div key={cat} style={{ marginBottom: 24 }}>
             <SectionLabel>{`0${i + 3} · ${CATEGORY_LABELS[cat]}`}</SectionLabel>
@@ -367,8 +353,7 @@ function OrderView({ temp, setTemp, base, setBase, addons, selected, setSelected
             </div>
           </div>
         )
-      ));
-      })()}
+      ))}
 
       {temp && base && (
         <div
@@ -972,7 +957,7 @@ function AdminPanel({ addons, saveMenu, onSignOut }) {
     saveMenu({ ...addons, [activeCat]: addons[activeCat].filter((x) => x.id !== id) });
   };
 
-  const placeholderName = { syrups: 'Cardamom', spices: 'Nutmeg', milks: 'Soy', extras: 'Honey' }[activeCat];
+  const placeholderName = { syrups: 'Cardamom', spices: 'Nutmeg', extras: 'Honey' }[activeCat];
 
   return (
     <div style={{ padding: '24px 20px 48px' }}>
@@ -1004,7 +989,7 @@ function AdminPanel({ addons, saveMenu, onSignOut }) {
       <NotifToggle />
       <OpenOrders />
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4, marginBottom: 20, padding: 4, borderRadius: 16, background: COLORS.cream }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4, marginBottom: 20, padding: 4, borderRadius: 16, background: COLORS.cream }}>
         {Object.keys(CATEGORY_LABELS).map((cat) => (
           <button
             key={cat}
