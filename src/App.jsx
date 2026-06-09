@@ -675,13 +675,12 @@ function OrderView({ temp, setTemp, base, setBase, addons, selected, setSelected
 function NameSheet({ orderSummary, orderAddons = [], onCancel, onConfirm }) {
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
-  const [kbInset, setKbInset] = useState(0);
+  const [vp, setVp] = useState(null);
 
-  // Lock the page behind the sheet so it can't scroll/jitter, and lift the
-  // sheet above the iOS keyboard (which shrinks the visual viewport). iOS
-  // ignores `overflow:hidden`, so pin the body with position:fixed and restore
-  // the scroll position on close. Listen only to `resize` (keyboard show/hide)
-  // — a `scroll` listener jitters during rubber-banding.
+  // Lock the page behind the sheet (iOS ignores overflow:hidden, so pin the
+  // body with position:fixed and restore scroll on close), and track the
+  // visual viewport so the overlay sizes to exactly the area above the
+  // keyboard — the sheet then sits flush at the keyboard's top edge.
   useEffect(() => {
     const body = document.body;
     const scrollY = window.scrollY;
@@ -699,8 +698,11 @@ function NameSheet({ orderSummary, orderAddons = [], onCancel, onConfirm }) {
     body.style.width = '100%';
 
     const vv = window.visualViewport;
-    const update = () => setKbInset(vv ? Math.max(0, window.innerHeight - vv.height) : 0);
-    if (vv) vv.addEventListener('resize', update);
+    const update = () => { if (vv) setVp({ top: vv.offsetTop, height: vv.height }); };
+    if (vv) {
+      vv.addEventListener('resize', update);
+      vv.addEventListener('scroll', update);
+    }
     update();
 
     return () => {
@@ -710,9 +712,14 @@ function NameSheet({ orderSummary, orderAddons = [], onCancel, onConfirm }) {
       body.style.right = prev.right;
       body.style.width = prev.width;
       window.scrollTo(0, scrollY);
-      if (vv) vv.removeEventListener('resize', update);
+      if (vv) {
+        vv.removeEventListener('resize', update);
+        vv.removeEventListener('scroll', update);
+      }
     };
   }, []);
+
+  const kbOpen = vp ? window.innerHeight - vp.height > 120 : false;
 
   const submit = async () => {
     if (busy) return;
@@ -725,7 +732,10 @@ function NameSheet({ orderSummary, orderAddons = [], onCancel, onConfirm }) {
       onClick={onCancel}
       style={{
         position: 'fixed',
-        inset: 0,
+        top: vp ? vp.top : 0,
+        left: 0,
+        right: 0,
+        height: vp ? vp.height : '100%',
         background: 'rgba(26, 15, 8, 0.55)',
         display: 'flex',
         alignItems: 'flex-end',
@@ -734,8 +744,7 @@ function NameSheet({ orderSummary, orderAddons = [], onCancel, onConfirm }) {
         backdropFilter: 'blur(4px)',
         animation: 'fadeIn 0.25s ease-out both',
         boxSizing: 'border-box',
-        paddingBottom: kbInset,
-        transition: 'padding-bottom 0.2s ease-out',
+        transition: 'height 0.2s ease-out, top 0.2s ease-out',
       }}
     >
       <div
@@ -747,7 +756,7 @@ function NameSheet({ orderSummary, orderAddons = [], onCancel, onConfirm }) {
           borderTopLeftRadius: 24,
           borderTopRightRadius: 24,
           padding: '24px 20px',
-          paddingBottom: kbInset > 0 ? 14 : 'calc(24px + env(safe-area-inset-bottom))',
+          paddingBottom: kbOpen ? 14 : 'calc(24px + env(safe-area-inset-bottom))',
           boxShadow: '0 -10px 40px rgba(0,0,0,0.2)',
           animation: 'slideUpSheet 0.32s cubic-bezier(0.16, 1, 0.3, 1) both',
         }}
