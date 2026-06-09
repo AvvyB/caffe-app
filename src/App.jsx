@@ -780,6 +780,8 @@ function TempButton({ active, onClick, icon, label, activeColor, large }) {
     <button
       onClick={onClick}
       style={{
+        width: '100%',
+        boxSizing: 'border-box',
         padding: large ? '40px 0' : '20px 0',
         borderRadius: 18,
         display: 'flex',
