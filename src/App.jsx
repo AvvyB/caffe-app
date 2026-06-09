@@ -449,7 +449,7 @@ function OrderView({ temp, setTemp, base, setBase, addons, selected, setSelected
           flex: 1,
           display: 'flex',
           flexDirection: 'column',
-          animation: `${dir > 0 ? 'pageInRight' : 'pageInLeft'} 0.34s cubic-bezier(0.16, 1, 0.3, 1) both`,
+          animation: `${dir > 0 ? 'pageInRight' : 'pageInLeft'} 0.5s cubic-bezier(0.16, 1, 0.3, 1) both`,
         }}
       >
         {/* Page header — hero on the first page, back + label after */}
