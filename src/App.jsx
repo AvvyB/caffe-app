@@ -164,6 +164,8 @@ export default function App() {
       style={{
         minHeight: '100dvh',
         boxSizing: 'border-box',
+        display: 'flex',
+        flexDirection: 'column',
         width: '100%',
         overflowX: 'hidden',
         background: COLORS.paper,
@@ -227,6 +229,7 @@ export default function App() {
           alignItems: 'center',
           justifyContent: 'space-between',
           borderBottom: `1px solid ${COLORS.espresso}15`,
+          flexShrink: 0,
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -389,7 +392,7 @@ function OrderView({ temp, setTemp, base, setBase, addons, selected, setSelected
   return (
     <div
       style={{
-        minHeight: !temp ? 'calc(100dvh - 64px)' : undefined,
+        flex: 1,
         display: 'flex',
         flexDirection: 'column',
         padding: temp && base ? '24px 20px 128px' : '24px 20px 40px',
@@ -583,6 +586,22 @@ function OrderView({ temp, setTemp, base, setBase, addons, selected, setSelected
 function NameSheet({ orderSummary, onCancel, onConfirm }) {
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
+  const [kbInset, setKbInset] = useState(0);
+
+  // On iOS the on-screen keyboard shrinks the visual viewport but not the
+  // layout viewport that position:fixed uses — so lift the sheet by the gap.
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const update = () => setKbInset(Math.max(0, window.innerHeight - vv.height - vv.offsetTop));
+    vv.addEventListener('resize', update);
+    vv.addEventListener('scroll', update);
+    update();
+    return () => {
+      vv.removeEventListener('resize', update);
+      vv.removeEventListener('scroll', update);
+    };
+  }, []);
 
   const submit = async () => {
     if (busy) return;
@@ -603,6 +622,9 @@ function NameSheet({ orderSummary, onCancel, onConfirm }) {
         zIndex: 100,
         backdropFilter: 'blur(4px)',
         animation: 'fadeIn 0.25s ease-out both',
+        boxSizing: 'border-box',
+        paddingBottom: kbInset,
+        transition: 'padding-bottom 0.2s ease-out',
       }}
     >
       <div
