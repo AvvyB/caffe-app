@@ -162,7 +162,8 @@ export default function App() {
   return (
     <div
       style={{
-        minHeight: '100vh',
+        minHeight: '100dvh',
+        boxSizing: 'border-box',
         width: '100%',
         overflowX: 'hidden',
         background: COLORS.paper,
@@ -388,10 +389,10 @@ function OrderView({ temp, setTemp, base, setBase, addons, selected, setSelected
   return (
     <div
       style={{
-        minHeight: 'calc(100vh - 70px)',
+        minHeight: !temp ? 'calc(100dvh - 64px)' : undefined,
         display: 'flex',
         flexDirection: 'column',
-        padding: '24px 20px 128px',
+        padding: temp && base ? '24px 20px 128px' : '24px 20px 40px',
       }}
     >
       {/* Hero — bigger when nothing's picked, compact once temp is chosen */}
