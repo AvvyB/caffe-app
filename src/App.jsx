@@ -449,7 +449,7 @@ function OrderView({ temp, setTemp, base, setBase, addons, selected, setSelected
           flex: 1,
           display: 'flex',
           flexDirection: 'column',
-          animation: `${dir > 0 ? 'pageInRight' : 'pageInLeft'} 0.5s cubic-bezier(0.16, 1, 0.3, 1) both`,
+          animation: `${dir > 0 ? 'pageInRight' : 'pageInLeft'} 0.7s cubic-bezier(0.16, 1, 0.3, 1) both`,
         }}
       >
         {/* Page header — hero on the first page, back + label after */}
@@ -639,6 +639,9 @@ function OrderView({ temp, setTemp, base, setBase, addons, selected, setSelected
       {askingName && (
         <NameSheet
           orderSummary={`${temp ? temp[0].toUpperCase() + temp.slice(1) : ''} ${decaf ? 'Decaf ' : ''}${baseObj?.name || ''}`.trim()}
+          orderAddons={['syrups', 'spices', 'extras'].flatMap((cat) =>
+            (selected[cat] || []).map((id) => addons[cat]?.find((a) => a.id === id)?.name).filter(Boolean)
+          )}
           onCancel={() => setAskingName(false)}
           onConfirm={submitOrder}
         />
@@ -647,23 +650,32 @@ function OrderView({ temp, setTemp, base, setBase, addons, selected, setSelected
   );
 }
 
-function NameSheet({ orderSummary, onCancel, onConfirm }) {
+function NameSheet({ orderSummary, orderAddons = [], onCancel, onConfirm }) {
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
   const [kbInset, setKbInset] = useState(0);
 
-  // On iOS the on-screen keyboard shrinks the visual viewport but not the
-  // layout viewport that position:fixed uses — so lift the sheet by the gap.
+  // Lock the page behind the sheet so it can't scroll/jitter, and lift the
+  // sheet above the iOS keyboard (which shrinks the visual viewport). Listen
+  // only to `resize` (keyboard show/hide) — a `scroll` listener jitters during
+  // rubber-banding.
   useEffect(() => {
+    const html = document.documentElement;
+    const body = document.body;
+    const prevHtml = html.style.overflow;
+    const prevBody = body.style.overflow;
+    html.style.overflow = 'hidden';
+    body.style.overflow = 'hidden';
+
     const vv = window.visualViewport;
-    if (!vv) return;
-    const update = () => setKbInset(Math.max(0, window.innerHeight - vv.height - vv.offsetTop));
-    vv.addEventListener('resize', update);
-    vv.addEventListener('scroll', update);
+    const update = () => setKbInset(vv ? Math.max(0, window.innerHeight - vv.height) : 0);
+    if (vv) vv.addEventListener('resize', update);
     update();
+
     return () => {
-      vv.removeEventListener('resize', update);
-      vv.removeEventListener('scroll', update);
+      html.style.overflow = prevHtml;
+      body.style.overflow = prevBody;
+      if (vv) vv.removeEventListener('resize', update);
     };
   }, []);
 
@@ -710,9 +722,22 @@ function NameSheet({ orderSummary, onCancel, onConfirm }) {
             <h2 style={{ fontFamily: THEME.serifFont, fontSize: 28, fontWeight: 500, lineHeight: 1, letterSpacing: '-0.02em', margin: 0 }}>
               What's your <em style={{ fontStyle: 'italic', color: COLORS.copperDark }}>name</em>?
             </h2>
-            <p style={{ fontSize: 13, opacity: 0.7, marginTop: 8, marginBottom: 0 }}>
-              {orderSummary}
-            </p>
+            <div style={{
+              marginTop: 12,
+              padding: '10px 14px',
+              borderRadius: 12,
+              background: COLORS.cream,
+              border: `1px solid ${COLORS.espresso}10`,
+            }}>
+              <div style={{ fontFamily: THEME.serifFont, fontSize: 16, fontWeight: 500, letterSpacing: '-0.01em' }}>
+                {orderSummary}
+              </div>
+              {orderAddons.length > 0 && (
+                <div style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}>
+                  {orderAddons.join(' · ')}
+                </div>
+              )}
+            </div>
           </div>
           <button
             onClick={onCancel}
