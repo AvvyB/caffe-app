@@ -676,6 +676,33 @@ function NameSheet({ orderSummary, orderAddons = [], onCancel, onConfirm }) {
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
 
+  // Lock page scroll behind the sheet (iOS ignores overflow:hidden, so pin the
+  // body with position:fixed and restore the scroll position on close).
+  useEffect(() => {
+    const body = document.body;
+    const scrollY = window.scrollY;
+    const prev = {
+      position: body.style.position,
+      top: body.style.top,
+      left: body.style.left,
+      right: body.style.right,
+      width: body.style.width,
+    };
+    body.style.position = 'fixed';
+    body.style.top = `-${scrollY}px`;
+    body.style.left = '0';
+    body.style.right = '0';
+    body.style.width = '100%';
+    return () => {
+      body.style.position = prev.position;
+      body.style.top = prev.top;
+      body.style.left = prev.left;
+      body.style.right = prev.right;
+      body.style.width = prev.width;
+      window.scrollTo(0, scrollY);
+    };
+  }, []);
+
   const submit = async () => {
     if (busy) return;
     setBusy(true);
@@ -750,7 +777,6 @@ function NameSheet({ orderSummary, orderAddons = [], onCancel, onConfirm }) {
         </div>
 
         <input
-          autoFocus
           value={name}
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter' && name.trim()) submit(); }}
