@@ -406,8 +406,8 @@ function OrderView({ temp, setTemp, base, setBase, addons, selected, setSelected
   const go = (n) => { setDir(n > step ? 1 : -1); setStep(n); };
   const back = () => go(step - 1);
 
-  // Auto-advance, but pause first so the tapped option's highlight is visible
-  const advance = (n) => setTimeout(() => go(n), 360);
+  // Auto-advance, but pause briefly so the tapped option's highlight is visible
+  const advance = (n) => setTimeout(() => go(n), 170);
   const chooseTemp = (t) => {
     if (base) {
       const stillValid = ESPRESSO_BASES.find((b) => b.id === base)?.temps.includes(t);
@@ -419,7 +419,7 @@ function OrderView({ temp, setTemp, base, setBase, addons, selected, setSelected
   const chooseBase = (id) => { setBase(id); advance(2); };
   const chooseCaffeine = (v) => { setDecaf(v); advance(3); };
 
-  // Swipe left to go back a page
+  // Swipe right to go back a page
   const onTouchStart = (e) => {
     const t = e.touches[0];
     touch.current = { x: t.clientX, y: t.clientY };
@@ -428,7 +428,7 @@ function OrderView({ temp, setTemp, base, setBase, addons, selected, setSelected
     const t = e.changedTouches[0];
     const dx = t.clientX - touch.current.x;
     const dy = t.clientY - touch.current.y;
-    if (step > 0 && dx < -70 && Math.abs(dx) > Math.abs(dy) * 1.8) back();
+    if (step > 0 && dx > 70 && Math.abs(dx) > Math.abs(dy) * 1.8) back();
   };
 
   const STEP_LABELS = ['01 · Hot or iced', '02 · Choose your drink', '03 · Caffeine', '04 · Make it yours'];
@@ -471,7 +471,7 @@ function OrderView({ temp, setTemp, base, setBase, addons, selected, setSelected
           flex: 1,
           display: 'flex',
           flexDirection: 'column',
-          animation: `${dir > 0 ? 'pageInRight' : 'pageInLeft'} 0.7s cubic-bezier(0.16, 1, 0.3, 1) both`,
+          animation: `${dir > 0 ? 'pageInRight' : 'pageInLeft'} 0.4s cubic-bezier(0.16, 1, 0.3, 1) both`,
         }}
       >
         {/* Page header — hero on the first page, back + label after */}
