@@ -214,6 +214,18 @@ export default function App() {
           0%   { opacity: 1; transform: translate(0,0) scale(1); }
           100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(0.5); }
         }
+        @keyframes pageInRight {
+          from { opacity: 0; transform: translateX(28px); }
+          to   { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes pageInLeft {
+          from { opacity: 0; transform: translateX(-28px); }
+          to   { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes barIn {
+          from { opacity: 0; transform: translateY(100%); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
         .step-enter { animation: fadeUp 0.45s ease-out both; }
         .new-order { animation: fadeUp 0.45s ease-out both, shimmerNew 1.2s ease-out 0.1s both; }
         button { transition: transform 0.12s ease-out, background 0.18s ease-out, color 0.18s ease-out, border-color 0.18s ease-out; }
@@ -300,6 +312,15 @@ export default function App() {
 }
 
 function OrderView({ temp, setTemp, base, setBase, addons, selected, setSelected, toggleSelected, baseObj, decaf, setDecaf, requestPlaceOrder, submitOrder, askingName, setAskingName, orderPlaced }) {
+  // Paged flow: 0 temp · 1 drink · 2 caffeine · 3 customize
+  const [step, setStep] = useState(0);
+  const [dir, setDir] = useState(1);
+
+  // Jump back to the first page whenever a fresh order starts (post-success reset)
+  useEffect(() => {
+    if (!temp && !base) setStep(0);
+  }, [temp, base]);
+
   if (orderPlaced) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '96px 24px', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
@@ -375,19 +396,22 @@ function OrderView({ temp, setTemp, base, setBase, addons, selected, setSelected
   const shotBases = ESPRESSO_BASES.filter((b) => b.group === 'shots' && b.temps.includes(temp));
   const milkBases = ESPRESSO_BASES.filter((b) => b.group === 'milk' && b.temps.includes(temp));
 
-  // If user picks a temp that excludes their selected drink, clear it
-  const handleTempChange = (newTemp) => {
+  const go = (n) => { setDir(n > step ? 1 : -1); setStep(n); };
+  const back = () => go(step - 1);
+
+  // Each single-choice selection auto-advances to the next page
+  const chooseTemp = (t) => {
     if (base) {
-      const stillValid = ESPRESSO_BASES.find((b) => b.id === base)?.temps.includes(newTemp);
+      const stillValid = ESPRESSO_BASES.find((b) => b.id === base)?.temps.includes(t);
       if (!stillValid) setBase(null);
     }
-    setTemp(newTemp);
+    setTemp(t);
+    go(1);
   };
+  const chooseBase = (id) => { setBase(id); go(2); };
+  const chooseCaffeine = (v) => { setDecaf(v); go(3); };
 
-  // Clear milk selections if switching to a shot (since milk options will hide)
-  const pickBase = (id) => {
-    setBase(id);
-  };
+  const STEP_LABELS = ['01 · Hot or iced', '02 · Choose your drink', '03 · Caffeine', '04 · Make it yours'];
 
   return (
     <div
@@ -395,146 +419,186 @@ function OrderView({ temp, setTemp, base, setBase, addons, selected, setSelected
         flex: 1,
         display: 'flex',
         flexDirection: 'column',
-        padding: temp && base ? '24px 20px 128px' : '24px 20px 40px',
+        padding: step === 3 ? '20px 20px 128px' : '20px 20px 40px',
       }}
     >
-      {/* Hero — bigger when nothing's picked, compact once temp is chosen */}
-      <div style={{ marginBottom: temp ? 28 : 36, transition: 'margin 0.4s ease' }}>
-        <div style={sectionLabelStyle}>{THEME.heroPre}</div>
-        <h1 style={{ fontFamily: THEME.serifFont, fontSize: temp ? 36 : 44, fontWeight: 500, lineHeight: 0.95, letterSpacing: '-0.03em', margin: 0, transition: 'font-size 0.4s ease' }}>
-          {THEME.heroLine[0]}<em style={{ fontStyle: 'italic', color: COLORS.copperDark }}>{THEME.heroLine[1]}</em>{THEME.heroLine[2]}
-        </h1>
+      {/* Segmented progress */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 22 }}>
+        {[0, 1, 2, 3].map((i) => (
+          <button
+            key={i}
+            onClick={() => i < step && go(i)}
+            aria-label={`Step ${i + 1}`}
+            style={{
+              height: 4,
+              flex: 1,
+              borderRadius: 999,
+              border: 'none',
+              padding: 0,
+              background: i <= step ? COLORS.copper : COLORS.espresso + '20',
+              cursor: i < step ? 'pointer' : 'default',
+              transition: 'background 0.35s ease',
+            }}
+          />
+        ))}
       </div>
 
-      <SectionLabel>01 · Hot or iced</SectionLabel>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 28 }}>
-        <TempButton active={temp === 'hot'} large={!temp} onClick={() => handleTempChange('hot')} icon={<Flame size={!temp ? 28 : 20} />} label="Hot" activeColor={COLORS.hotColor} />
-        <TempButton active={temp === 'iced'} large={!temp} onClick={() => handleTempChange('iced')} icon={<Snowflake size={!temp ? 28 : 20} />} label="Iced" activeColor={COLORS.ice} />
-      </div>
-
-      {/* Spacer fills the empty space below temp picker on first load */}
-      {!temp && (
-        <div
-          style={{
-            flex: 1,
-            minHeight: 80,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            opacity: 0.5,
-            paddingBottom: 40,
-            animation: 'fadeIn 0.6s ease-out 0.2s both',
-          }}
-        >
-          <div style={{ fontFamily: THEME.monoFont, fontSize: 10, letterSpacing: '0.25em', textTransform: 'uppercase', color: COLORS.copperDark, animation: 'float 3s ease-in-out infinite' }}>
-            ↓ pick to begin
+      <div
+        key={step}
+        style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          animation: `${dir > 0 ? 'pageInRight' : 'pageInLeft'} 0.34s cubic-bezier(0.16, 1, 0.3, 1) both`,
+        }}
+      >
+        {/* Page header — hero on the first page, back + label after */}
+        {step === 0 ? (
+          <div style={{ marginBottom: 32 }}>
+            <div style={sectionLabelStyle}>{THEME.heroPre}</div>
+            <h1 style={{ fontFamily: THEME.serifFont, fontSize: 44, fontWeight: 500, lineHeight: 0.95, letterSpacing: '-0.03em', margin: 0 }}>
+              {THEME.heroLine[0]}<em style={{ fontStyle: 'italic', color: COLORS.copperDark }}>{THEME.heroLine[1]}</em>{THEME.heroLine[2]}
+            </h1>
           </div>
-        </div>
-      )}
-
-      {temp && (
-        <div className="step-enter" key={`drinks-${temp}`}>
-          <SectionLabel>02 · Choose your drink</SectionLabel>
-          {shotBases.length > 0 && (
-            <>
-              <SubLabel>Espresso shots</SubLabel>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
-                {shotBases.map((b) => (
-                  <BaseButton key={b.id} item={b} active={base === b.id} onClick={() => pickBase(b.id)} />
-                ))}
-              </div>
-            </>
-          )}
-          {milkBases.length > 0 && (
-            <>
-              <SubLabel>Espresso with milk</SubLabel>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 28 }}>
-                {milkBases.map((b) => (
-                  <BaseButton key={b.id} item={b} active={base === b.id} onClick={() => pickBase(b.id)} />
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-      )}
-
-      {temp && base && (
-        <div className="step-enter" key={`decaf-${base}`} style={{ marginBottom: 24 }}>
-          <SectionLabel>03 · Caffeine</SectionLabel>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 22 }}>
             <button
-              onClick={() => setDecaf(false)}
+              onClick={back}
+              aria-label="Back"
               style={{
-                padding: '8px 14px',
-                borderRadius: 999,
-                fontSize: 14,
-                fontWeight: 500,
-                background: !decaf ? COLORS.copper : 'transparent',
-                color: !decaf ? COLORS.paper : COLORS.espresso,
-                border: `1px solid ${!decaf ? COLORS.copper : COLORS.espresso + '30'}`,
-                cursor: 'pointer',
-                fontFamily: 'inherit',
+                width: 36, height: 36, borderRadius: '50%',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: COLORS.cream, color: COLORS.espresso,
+                border: `1px solid ${COLORS.espresso}15`, cursor: 'pointer', flexShrink: 0,
               }}
             >
-              Regular
+              <ChevronLeft size={18} />
             </button>
-            <button
-              onClick={() => setDecaf(true)}
-              style={{
-                padding: '8px 14px',
-                borderRadius: 999,
-                fontSize: 14,
-                fontWeight: 500,
-                background: decaf ? COLORS.copper : 'transparent',
-                color: decaf ? COLORS.paper : COLORS.espresso,
-                border: `1px solid ${decaf ? COLORS.copper : COLORS.espresso + '30'}`,
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-              }}
-            >
-              Decaf
-            </button>
+            <div style={{ ...sectionLabelStyle, marginBottom: 0 }}>{STEP_LABELS[step]}</div>
           </div>
-        </div>
-      )}
+        )}
 
-      {temp && base && ['syrups', 'spices', 'extras'].map((cat, i) => (
-        addons[cat]?.length > 0 && (
-          <div className="step-enter" key={cat} style={{ marginBottom: 24, animationDelay: `${i * 60}ms` }}>
-            <SectionLabel>{`0${i + 4} · ${CATEGORY_LABELS[cat]}`}</SectionLabel>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              {addons[cat].map((item) => {
-                const isOn = selected[cat].includes(item.id);
-                return (
+        {/* Step 0 — temperature */}
+        {step === 0 && (
+          <>
+            <SectionLabel>{STEP_LABELS[0]}</SectionLabel>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              {[
+                { t: 'hot', icon: <Flame size={30} />, label: 'Hot', color: COLORS.hotColor },
+                { t: 'iced', icon: <Snowflake size={30} />, label: 'Iced', color: COLORS.ice },
+              ].map((o, i) => (
+                <div key={o.t} style={{ animation: `fadeUp 0.45s ease-out ${i * 80}ms both` }}>
+                  <TempButton active={temp === o.t} large onClick={() => chooseTemp(o.t)} icon={o.icon} label={o.label} activeColor={o.color} />
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* Step 1 — drink */}
+        {step === 1 && (
+          <>
+            {shotBases.length > 0 && (
+              <>
+                <SubLabel>Espresso shots</SubLabel>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+                  {shotBases.map((b, i) => (
+                    <div key={b.id} style={{ animation: `fadeUp 0.4s ease-out ${i * 45}ms both` }}>
+                      <BaseButton item={b} active={base === b.id} onClick={() => chooseBase(b.id)} />
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+            {milkBases.length > 0 && (
+              <>
+                <SubLabel>Espresso with milk</SubLabel>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {milkBases.map((b, i) => (
+                    <div key={b.id} style={{ animation: `fadeUp 0.4s ease-out ${(shotBases.length + i) * 45}ms both` }}>
+                      <BaseButton item={b} active={base === b.id} onClick={() => chooseBase(b.id)} />
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </>
+        )}
+
+        {/* Step 2 — caffeine */}
+        {step === 2 && (
+          <>
+            <p style={{ fontSize: 14, opacity: 0.7, marginTop: 0, marginBottom: 18 }}>
+              How do you want your {baseObj?.name}?
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {[
+                { v: false, label: 'Regular', desc: 'Full caffeine, full lift' },
+                { v: true, label: 'Decaf', desc: 'All the flavor, none of the buzz' },
+              ].map((o, i) => (
+                <div key={o.label} style={{ animation: `fadeUp 0.4s ease-out ${i * 70}ms both` }}>
                   <button
-                    key={item.id}
-                    onClick={() => toggleSelected(cat, item.id)}
+                    onClick={() => chooseCaffeine(o.v)}
                     style={{
-                      padding: '8px 14px',
-                      borderRadius: 999,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 8,
-                      fontSize: 14,
-                      fontWeight: 500,
-                      background: isOn ? COLORS.copper : 'transparent',
-                      color: isOn ? COLORS.paper : COLORS.espresso,
-                      border: `1px solid ${isOn ? COLORS.copper : COLORS.espresso + '30'}`,
-                      cursor: 'pointer',
-                      fontFamily: 'inherit',
+                      width: '100%', textAlign: 'left', padding: '16px 18px', borderRadius: 16,
+                      background: decaf === o.v ? COLORS.selectedBg : COLORS.cream,
+                      color: decaf === o.v ? COLORS.selectedText : COLORS.espresso,
+                      border: `1px solid ${decaf === o.v ? COLORS.copper : COLORS.espresso + '15'}`,
+                      cursor: 'pointer', fontFamily: 'inherit',
                     }}
                   >
-                    <span>{item.name}</span>
+                    <div style={{ fontFamily: THEME.serifFont, fontSize: 18, fontWeight: 500, letterSpacing: '-0.01em' }}>{o.label}</div>
+                    <div style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }}>{o.desc}</div>
                   </button>
-                );
-              })}
+                </div>
+              ))}
             </div>
-          </div>
-        )
-      ))}
+          </>
+        )}
 
-      {temp && base && (
+        {/* Step 3 — customize (all add-ons on one page) */}
+        {step === 3 && (
+          <>
+            <p style={{ fontSize: 14, opacity: 0.7, marginTop: 0, marginBottom: 20 }}>
+              Optional — tap to add, then place your order.
+            </p>
+            {['syrups', 'spices', 'extras'].map((cat, ci) => (
+              addons[cat]?.length > 0 && (
+                <div key={cat} style={{ marginBottom: 22, animation: `fadeUp 0.4s ease-out ${ci * 70}ms both` }}>
+                  <SubLabel>{CATEGORY_LABELS[cat]}</SubLabel>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {addons[cat].map((item) => {
+                      const isOn = selected[cat].includes(item.id);
+                      return (
+                        <button
+                          key={item.id}
+                          className="chip"
+                          onClick={() => toggleSelected(cat, item.id)}
+                          style={{
+                            padding: '8px 14px',
+                            borderRadius: 999,
+                            fontSize: 14,
+                            fontWeight: 500,
+                            background: isOn ? COLORS.copper : 'transparent',
+                            color: isOn ? COLORS.paper : COLORS.espresso,
+                            border: `1px solid ${isOn ? COLORS.copper : COLORS.espresso + '30'}`,
+                            cursor: 'pointer',
+                            fontFamily: 'inherit',
+                          }}
+                        >
+                          {item.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )
+            ))}
+          </>
+        )}
+      </div>
+
+      {step === 3 && (
         <div
           style={{
             position: 'fixed',
@@ -545,7 +609,7 @@ function OrderView({ temp, setTemp, base, setBase, addons, selected, setSelected
             background: COLORS.paper,
             borderTop: `1px solid ${COLORS.espresso}15`,
             backdropFilter: 'blur(10px)',
-            animation: 'fadeUp 0.35s ease-out',
+            animation: 'barIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both',
           }}
         >
           <button
@@ -574,7 +638,7 @@ function OrderView({ temp, setTemp, base, setBase, addons, selected, setSelected
 
       {askingName && (
         <NameSheet
-          orderSummary={`${temp ? temp[0].toUpperCase() + temp.slice(1) : ''} ${baseObj?.name || ''}`.trim()}
+          orderSummary={`${temp ? temp[0].toUpperCase() + temp.slice(1) : ''} ${decaf ? 'Decaf ' : ''}${baseObj?.name || ''}`.trim()}
           onCancel={() => setAskingName(false)}
           onConfirm={submitOrder}
         />
