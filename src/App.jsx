@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Trash2, Coffee, Settings, ShoppingBag, Check, ChevronLeft, Snowflake, Flame, Bell, BellOff, Lock, LogOut, X, Inbox } from 'lucide-react';
 import { onSnapshot, setDoc, addDoc, updateDoc, collection, query, where, orderBy, doc, serverTimestamp, increment } from 'firebase/firestore';
 import { MENU_DOC, db } from './firebase';
@@ -97,6 +97,8 @@ export default function App() {
   const toggleSelected = (cat, id) => {
     setSelected((s) => {
       const has = s[cat].includes(id);
+      // Syrups are single-select — picking one replaces any previous choice
+      if (cat === 'syrups') return { ...s, syrups: has ? [] : [id] };
       return { ...s, [cat]: has ? s[cat].filter((x) => x !== id) : [...s[cat], id] };
     });
   };
@@ -176,7 +178,6 @@ export default function App() {
           : `radial-gradient(circle at 20% 10%, ${COLORS.creamDark}55 0%, transparent 50%), radial-gradient(circle at 80% 90%, ${COLORS.copper}15 0%, transparent 40%)`,
         backgroundAttachment: 'fixed',
         backgroundSize: COLORS.starfield ? '100% 100%' : 'auto',
-        paddingTop: 'env(safe-area-inset-top)',
       }}
     >
       <link rel="stylesheet" href={FONTS_LINK} />
@@ -236,12 +237,17 @@ export default function App() {
       {/* Header */}
       <header
         style={{
-          padding: '16px 20px',
+          padding: 'calc(10px + env(safe-area-inset-top)) 20px 10px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           borderBottom: `1px solid ${COLORS.espresso}15`,
           flexShrink: 0,
+          position: 'sticky',
+          top: 0,
+          zIndex: 20,
+          background: `${COLORS.paper}f2`,
+          backdropFilter: 'blur(12px)',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -315,6 +321,7 @@ function OrderView({ temp, setTemp, base, setBase, addons, selected, setSelected
   // Paged flow: 0 temp · 1 drink · 2 caffeine · 3 customize
   const [step, setStep] = useState(0);
   const [dir, setDir] = useState(1);
+  const touch = useRef({ x: 0, y: 0 });
 
   // Jump back to the first page whenever a fresh order starts (post-success reset)
   useEffect(() => {
@@ -399,22 +406,37 @@ function OrderView({ temp, setTemp, base, setBase, addons, selected, setSelected
   const go = (n) => { setDir(n > step ? 1 : -1); setStep(n); };
   const back = () => go(step - 1);
 
-  // Each single-choice selection auto-advances to the next page
+  // Auto-advance, but pause first so the tapped option's highlight is visible
+  const advance = (n) => setTimeout(() => go(n), 360);
   const chooseTemp = (t) => {
     if (base) {
       const stillValid = ESPRESSO_BASES.find((b) => b.id === base)?.temps.includes(t);
       if (!stillValid) setBase(null);
     }
     setTemp(t);
-    go(1);
+    advance(1);
   };
-  const chooseBase = (id) => { setBase(id); go(2); };
-  const chooseCaffeine = (v) => { setDecaf(v); go(3); };
+  const chooseBase = (id) => { setBase(id); advance(2); };
+  const chooseCaffeine = (v) => { setDecaf(v); advance(3); };
+
+  // Swipe left to go back a page
+  const onTouchStart = (e) => {
+    const t = e.touches[0];
+    touch.current = { x: t.clientX, y: t.clientY };
+  };
+  const onTouchEnd = (e) => {
+    const t = e.changedTouches[0];
+    const dx = t.clientX - touch.current.x;
+    const dy = t.clientY - touch.current.y;
+    if (step > 0 && dx < -70 && Math.abs(dx) > Math.abs(dy) * 1.8) back();
+  };
 
   const STEP_LABELS = ['01 · Hot or iced', '02 · Choose your drink', '03 · Caffeine', '04 · Make it yours'];
 
   return (
     <div
+      onTouchStart={onTouchStart}
+      onTouchEnd={onTouchEnd}
       style={{
         flex: 1,
         display: 'flex',
