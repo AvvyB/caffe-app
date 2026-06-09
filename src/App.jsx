@@ -746,7 +746,8 @@ function NameSheet({ orderSummary, orderAddons = [], onCancel, onConfirm }) {
           background: COLORS.paper,
           borderTopLeftRadius: 24,
           borderTopRightRadius: 24,
-          padding: '24px 20px calc(24px + env(safe-area-inset-bottom))',
+          padding: '24px 20px',
+          paddingBottom: kbInset > 0 ? 14 : 'calc(24px + env(safe-area-inset-bottom))',
           boxShadow: '0 -10px 40px rgba(0,0,0,0.2)',
           animation: 'slideUpSheet 0.32s cubic-bezier(0.16, 1, 0.3, 1) both',
         }}
