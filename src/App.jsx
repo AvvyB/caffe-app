@@ -52,6 +52,39 @@ const CATEGORY_LABELS = {
   extras: 'Extras',
 };
 
+// Sweetness slider — discrete modes, each maps to a pump count
+const SWEETNESS_MODES = [
+  { id: 'perfect', label: 'Perfect', pumps: 1 },
+  { id: 'notbad', label: 'Not a bad choice', pumps: 1.5 },
+  { id: 'over', label: 'Over sweetened', pumps: 2 },
+  { id: 'disgusting', label: 'Disgusting', pumps: 2.5 },
+];
+
+const pumpLabel = (pumps) => `${pumps} pump${pumps === 1 ? '' : 's'}`;
+
+// The sweetness slider only applies to a real, sweetened syrup choice
+const sweetenedSyrup = (selected, addons) => {
+  const syrup = addons.syrups?.find((s) => selected.syrups.includes(s.id));
+  return syrup && syrup.name !== 'Unsweetened' ? syrup : null;
+};
+
+// Readable list of chosen add-ons; the syrup carries its pump count when sweetened
+const buildAddonsList = (selected, addons, sweetness) => {
+  const list = [];
+  ['syrups', 'spices', 'extras'].forEach((cat) => {
+    selected[cat].forEach((id) => {
+      const item = addons[cat]?.find((a) => a.id === id);
+      if (!item) return;
+      if (cat === 'syrups' && item.name !== 'Unsweetened') {
+        list.push(`${item.name} · ${pumpLabel(SWEETNESS_MODES[sweetness].pumps)}`);
+      } else {
+        list.push(item.name);
+      }
+    });
+  });
+  return list;
+};
+
 export default function App() {
   const [view, setView] = useState('order');
   const [addons, setAddons] = useState(DEFAULT_ADDONS);
@@ -59,6 +92,7 @@ export default function App() {
   const [temp, setTemp] = useState(null);
   const [base, setBase] = useState(null);
   const [selected, setSelected] = useState({ syrups: [], spices: [], extras: [] });
+  const [sweetness, setSweetness] = useState(0);
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [askingName, setAskingName] = useState(false);
   const [decaf, setDecaf] = useState(false);
@@ -114,14 +148,7 @@ export default function App() {
 
     // Build readable strings
     const tempLabel = temp ? temp.charAt(0).toUpperCase() + temp.slice(1) : '';
-    const cats = ['syrups', 'spices', 'extras'];
-    const addonsList = [];
-    cats.forEach((cat) => {
-      selected[cat].forEach((id) => {
-        const item = addons[cat]?.find((a) => a.id === id);
-        if (item) addonsList.push(item.name);
-      });
-    });
+    const addonsList = buildAddonsList(selected, addons, sweetness);
     const decafLabel = decaf ? 'Decaf ' : '';
     const orderText = `${tempLabel} ${decafLabel}${baseObj?.name || ''}${addonsList.length ? ' · ' + addonsList.join(', ') : ''}`.trim();
 
@@ -158,6 +185,7 @@ export default function App() {
       setBase(null);
       setDecaf(false);
       setSelected({ syrups: [], spices: [], extras: [] });
+      setSweetness(0);
     }, 3500);
   };
 
@@ -309,7 +337,7 @@ export default function App() {
           </div>
         </div>
       ) : view === 'order' ? (
-        <OrderView {...{ temp, setTemp, base, setBase, addons, selected, setSelected, toggleSelected, baseObj, decaf, setDecaf, requestPlaceOrder, submitOrder, askingName, setAskingName, orderPlaced }} />
+        <OrderView {...{ temp, setTemp, base, setBase, addons, selected, setSelected, toggleSelected, sweetness, setSweetness, baseObj, decaf, setDecaf, requestPlaceOrder, submitOrder, askingName, setAskingName, orderPlaced }} />
       ) : (
         <AdminView addons={addons} saveMenu={saveMenu} />
       )}
@@ -317,7 +345,7 @@ export default function App() {
   );
 }
 
-function OrderView({ temp, setTemp, base, setBase, addons, selected, setSelected, toggleSelected, baseObj, decaf, setDecaf, requestPlaceOrder, submitOrder, askingName, setAskingName, orderPlaced }) {
+function OrderView({ temp, setTemp, base, setBase, addons, selected, setSelected, toggleSelected, sweetness, setSweetness, baseObj, decaf, setDecaf, requestPlaceOrder, submitOrder, askingName, setAskingName, orderPlaced }) {
   // Paged flow: 0 temp · 1 drink · 2 caffeine · 3 customize
   const [step, setStep] = useState(0);
   const [dir, setDir] = useState(1);
@@ -416,7 +444,15 @@ function OrderView({ temp, setTemp, base, setBase, addons, selected, setSelected
     setTemp(t);
     advance(1);
   };
-  const chooseBase = (id) => { setBase(id); advance(2); };
+  const chooseBase = (id) => {
+    setBase(id);
+    // Mocha hides syrups & spices — drop any earlier picks so they don't ride along
+    if (id === 'mocha') {
+      setSelected((s) => ({ ...s, syrups: [], spices: [] }));
+      setSweetness(0);
+    }
+    advance(2);
+  };
   const chooseCaffeine = (v) => { setDecaf(v); advance(3); };
 
   // Swipe right to go back a page
@@ -584,7 +620,8 @@ function OrderView({ temp, setTemp, base, setBase, addons, selected, setSelected
             <p style={{ fontSize: 14, opacity: 0.7, marginTop: 0, marginBottom: 20 }}>
               Optional — tap to add, then place your order.
             </p>
-            {['syrups', 'spices', 'extras'].map((cat, ci) => (
+            {/* A mocha is already chocolate-sweet — no syrups or seasonal spices */}
+            {(base === 'mocha' ? ['extras'] : ['syrups', 'spices', 'extras']).map((cat, ci) => (
               addons[cat]?.length > 0 && (
                 <div key={cat} style={{ marginBottom: 22, animation: `fadeUp 0.4s ease-out ${ci * 70}ms both` }}>
                   <SubLabel>{CATEGORY_LABELS[cat]}</SubLabel>
@@ -613,6 +650,10 @@ function OrderView({ temp, setTemp, base, setBase, addons, selected, setSelected
                       );
                     })}
                   </div>
+                  {/* Sweetness lives under the syrup picker, once a sweetened syrup is chosen */}
+                  {cat === 'syrups' && sweetenedSyrup(selected, addons) && (
+                    <SweetnessSlider value={sweetness} onChange={setSweetness} />
+                  )}
                 </div>
               )
             ))}
@@ -661,9 +702,7 @@ function OrderView({ temp, setTemp, base, setBase, addons, selected, setSelected
       {askingName && (
         <NameSheet
           orderSummary={`${temp ? temp[0].toUpperCase() + temp.slice(1) : ''} ${decaf ? 'Decaf ' : ''}${baseObj?.name || ''}`.trim()}
-          orderAddons={['syrups', 'spices', 'extras'].flatMap((cat) =>
-            (selected[cat] || []).map((id) => addons[cat]?.find((a) => a.id === id)?.name).filter(Boolean)
-          )}
+          orderAddons={buildAddonsList(selected, addons, sweetness)}
           onCancel={() => setAskingName(false)}
           onConfirm={submitOrder}
         />
@@ -878,6 +917,65 @@ function SubLabel({ children }) {
   return (
     <div style={{ fontFamily: THEME.serifFont, fontStyle: 'italic', fontSize: 13, color: COLORS.copperDark, marginBottom: 8, marginTop: 2 }}>
       {children}
+    </div>
+  );
+}
+
+// Discrete sweetness control — drag the slider or tap a stop; each maps to a pump count
+function SweetnessSlider({ value, onChange }) {
+  const mode = SWEETNESS_MODES[value];
+  const last = SWEETNESS_MODES.length - 1;
+  return (
+    <div
+      style={{
+        marginTop: 12,
+        padding: '14px 16px',
+        borderRadius: 16,
+        background: COLORS.cream,
+        border: `1px solid ${COLORS.espresso}15`,
+        animation: 'fadeUp 0.3s ease-out both',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 }}>
+        <span style={{ fontFamily: THEME.serifFont, fontStyle: 'italic', fontSize: 16, color: COLORS.espresso }}>
+          {mode.label}
+        </span>
+        <span style={{ fontFamily: THEME.monoFont, fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: COLORS.copperDark }}>
+          {pumpLabel(mode.pumps)}
+        </span>
+      </div>
+      <input
+        type="range"
+        min={0}
+        max={last}
+        step={1}
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        aria-label="Sweetness"
+        style={{ width: '100%', accentColor: COLORS.copper, cursor: 'pointer', margin: 0 }}
+      />
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}>
+        {SWEETNESS_MODES.map((m, i) => (
+          <button
+            key={m.id}
+            onClick={() => onChange(i)}
+            style={{
+              flex: 1,
+              background: 'none',
+              border: 'none',
+              padding: '2px 0',
+              cursor: 'pointer',
+              fontFamily: THEME.monoFont,
+              fontSize: 10,
+              textAlign: i === 0 ? 'left' : i === last ? 'right' : 'center',
+              color: i === value ? COLORS.copperDark : COLORS.espresso + '70',
+              fontWeight: i === value ? 700 : 400,
+            }}
+          >
+            {m.pumps}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
