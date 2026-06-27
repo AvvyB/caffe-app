@@ -260,6 +260,12 @@ export default function App() {
         button { transition: transform 0.12s ease-out, background 0.18s ease-out, color 0.18s ease-out, border-color 0.18s ease-out; }
         button:active { transform: scale(0.97); }
         .chip { transition: background 0.18s ease-out, color 0.18s ease-out, border-color 0.18s ease-out; }
+        .sweet-slider { -webkit-appearance: none; appearance: none; width: 100%; height: 40px; margin: 0; background: transparent; cursor: pointer; touch-action: none; }
+        .sweet-slider:focus { outline: none; }
+        .sweet-slider::-webkit-slider-runnable-track { height: 6px; border-radius: 999px; background: ${COLORS.copper}33; }
+        .sweet-slider::-moz-range-track { height: 6px; border-radius: 999px; background: ${COLORS.copper}33; }
+        .sweet-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 30px; height: 30px; margin-top: -12px; border-radius: 50%; background: ${COLORS.copper}; border: 3px solid ${COLORS.paper}; box-shadow: 0 1px 5px rgba(0,0,0,0.28); }
+        .sweet-slider::-moz-range-thumb { width: 30px; height: 30px; border-radius: 50%; background: ${COLORS.copper}; border: 3px solid ${COLORS.paper}; box-shadow: 0 1px 5px rgba(0,0,0,0.28); }
       `}</style>
 
       {/* Header */}
@@ -948,6 +954,7 @@ function SweetnessSlider({ value, onChange }) {
         </span>
       </div>
       <input
+        className="sweet-slider"
         type="range"
         min={0}
         max={last}
@@ -955,7 +962,6 @@ function SweetnessSlider({ value, onChange }) {
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
         aria-label="Sweetness"
-        style={{ width: '100%', accentColor: COLORS.copper, cursor: 'pointer', margin: 0 }}
       />
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}>
         {SWEETNESS_MODES.map((m, i) => (
