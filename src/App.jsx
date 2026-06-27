@@ -927,6 +927,9 @@ function SweetnessSlider({ value, onChange }) {
   const last = SWEETNESS_MODES.length - 1;
   return (
     <div
+      // Keep slider drags from registering as a page swipe-back gesture
+      onTouchStart={(e) => e.stopPropagation()}
+      onTouchEnd={(e) => e.stopPropagation()}
       style={{
         marginTop: 12,
         padding: '14px 16px',
