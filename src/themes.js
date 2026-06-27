@@ -128,9 +128,90 @@ const STAR_WARS_THEME = {
   ],
 };
 
+const FOURTH_OF_JULY_THEME = {
+  id: 'fourthofjuly',
+
+  // Night-sky theme: deep navy surfaces, bright text, red/white/blue accents.
+  // Like Star Wars, "espresso" semantically means the high-contrast text color.
+  colors: {
+    paper: '#0a1633',          // page background — twilight navy sky
+    cream: '#122047',          // panel surface
+    creamDark: '#1a2c5e',      // raised panel / hover
+    espresso: '#f4f7ff',       // PRIMARY TEXT — bright star white
+    espressoLight: '#aebbe0',  // secondary text
+    copper: '#e23b4e',         // firework red — selected chips / accents
+    copperDark: '#ff5a6a',     // bright red (italic emphasis)
+    ice: '#5b8def',            // sparkler blue — Jedi/iced indicator
+    accent: '#e23b4e',
+    danger: '#e23b4e',         // firework red
+    fireworks: true,           // signal to App.jsx to render the fireworks layer
+    // Primary CTA — bold red so it pops against the navy night
+    ctaBg: '#cf2d3f',
+    ctaText: '#ffffff',
+    hotColor: '#e23b4e',       // red
+    // Selected drink — solid red with white text for a star-spangled pop
+    selectedBg: '#cf2d3f',
+    selectedText: '#ffffff',
+  },
+
+  fontsLink:
+    'https://fonts.googleapis.com/css2?family=Rye&family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap',
+  serifFont: "'Rye', serif",   // vintage Americana poster display
+  sansFont: "'DM Sans', sans-serif",
+  monoFont: "'JetBrains Mono', monospace",
+
+  brandName: 'Liberty Caffè',
+  tagline: 'Land of the free refills',
+  heroPre: '— The 4th of July Menu',
+  heroLine: ['Pour yourself some ', 'liberty', '.'],
+  brewingLabel: 'LIGHTING THE FUSE...',
+  ownerHeroPre: '— Owner panel',
+  ownerHeroLine: ['Curate the ', 'celebration', '.'],
+  notifyTitle: 'New order 🎆',
+
+  exclusiveDrinks: [
+    {
+      id: 'firecracker',
+      name: 'The Firecracker',
+      desc: 'Triple-shot mocha, cayenne, dark cherry, popping candy',
+      group: 'milk',
+      temps: ['hot', 'iced'],
+    },
+    {
+      id: 'redwhiteblue',
+      name: 'Red, White & Cold Brew',
+      desc: 'Cold brew layered with vanilla cream and blueberry',
+      group: 'milk',
+      temps: ['iced'],
+    },
+    {
+      id: 'starspangled',
+      name: 'Star-Spangled Latte',
+      desc: 'Vanilla latte with strawberry and a blue-spirulina swirl',
+      group: 'milk',
+      temps: ['hot', 'iced'],
+    },
+    {
+      id: 'libertybell',
+      name: 'The Liberty Bell',
+      desc: 'Salted caramel macchiato with toasted pecan',
+      group: 'milk',
+      temps: ['hot'],
+    },
+    {
+      id: 'freedomfizz',
+      name: 'Freedom Fizz',
+      desc: 'Espresso tonic over ice with orange and rosemary',
+      group: 'shots',
+      temps: ['iced'],
+    },
+  ],
+};
+
 const THEMES = {
   default: DEFAULT_THEME,
   starwars: STAR_WARS_THEME,
+  fourthofjuly: FOURTH_OF_JULY_THEME,
 };
 
 export function getTheme(name) {

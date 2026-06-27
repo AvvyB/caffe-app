@@ -243,6 +243,22 @@ export default function App() {
           0%   { opacity: 1; transform: translate(0,0) scale(1); }
           100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(0.5); }
         }
+        @keyframes fwBurst {
+          0%   { opacity: 0; transform: translate(0,0) scale(0.3); }
+          8%   { opacity: 1; transform: translate(calc(var(--dx) * 0.12), calc(var(--dy) * 0.12)) scale(1); }
+          45%  { opacity: 1; transform: translate(var(--dx), var(--dy)) scale(1); }
+          75%  { opacity: 0; transform: translate(calc(var(--dx) * 1.18), calc(var(--dy) * 1.18 + 16px)) scale(0.55); }
+          100% { opacity: 0; transform: translate(calc(var(--dx) * 1.18), calc(var(--dy) * 1.18 + 16px)) scale(0.5); }
+        }
+        @keyframes fwFlash {
+          0%   { opacity: 0; transform: scale(0.2); }
+          5%   { opacity: 1; transform: scale(1); }
+          22%  { opacity: 0; transform: scale(1.8); }
+          100% { opacity: 0; transform: scale(1.8); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .fw-particle, .fw-flash { animation: none !important; opacity: 0 !important; }
+        }
         @keyframes pageInRight {
           from { opacity: 0; transform: translateX(28px); }
           to   { opacity: 1; transform: translateX(0); }
@@ -267,6 +283,64 @@ export default function App() {
         .sweet-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 30px; height: 30px; margin-top: -12px; border-radius: 50%; background: ${COLORS.copper}; border: 3px solid ${COLORS.paper}; box-shadow: 0 1px 5px rgba(0,0,0,0.28); }
         .sweet-slider::-moz-range-thumb { width: 30px; height: 30px; border-radius: 50%; background: ${COLORS.copper}; border: 3px solid ${COLORS.paper}; box-shadow: 0 1px 5px rgba(0,0,0,0.28); }
       `}</style>
+
+      {/* Fireworks night sky (4th of July theme) */}
+      {COLORS.fireworks && (() => {
+        const bursts = [
+          { x: '16%', y: '20%', count: 16, radius: 64, dur: 2.6, delay: 0.0, color: COLORS.copperDark },
+          { x: '78%', y: '16%', count: 18, radius: 76, dur: 3.0, delay: 0.7, color: COLORS.ice },
+          { x: '50%', y: '12%', count: 20, radius: 84, dur: 2.8, delay: 1.4, color: '#ffffff' },
+          { x: '30%', y: '30%', count: 14, radius: 58, dur: 2.4, delay: 2.1, color: '#ffd95a' },
+          { x: '86%', y: '34%', count: 16, radius: 68, dur: 3.2, delay: 1.0, color: COLORS.copper },
+          { x: '64%', y: '28%', count: 18, radius: 72, dur: 2.7, delay: 2.6, color: COLORS.ice },
+        ];
+        return (
+          <div aria-hidden style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0, overflow: 'hidden' }}>
+            {bursts.map((b, bi) => (
+              <div key={bi} style={{ position: 'absolute', left: b.x, top: b.y, width: 0, height: 0 }}>
+                <span
+                  className="fw-flash"
+                  style={{
+                    position: 'absolute',
+                    left: -7,
+                    top: -7,
+                    width: 14,
+                    height: 14,
+                    borderRadius: '50%',
+                    background: b.color,
+                    boxShadow: `0 0 18px 6px ${b.color}`,
+                    animation: `fwFlash ${b.dur}s ease-out ${b.delay}s infinite`,
+                  }}
+                />
+                {Array.from({ length: b.count }).map((_, i) => {
+                  const angle = (Math.PI * 2 * i) / b.count;
+                  const dx = Math.cos(angle) * b.radius;
+                  const dy = Math.sin(angle) * b.radius;
+                  return (
+                    <span
+                      key={i}
+                      className="fw-particle"
+                      style={{
+                        position: 'absolute',
+                        left: -2.5,
+                        top: -2.5,
+                        width: 5,
+                        height: 5,
+                        borderRadius: '50%',
+                        background: b.color,
+                        boxShadow: `0 0 6px ${b.color}`,
+                        '--dx': `${dx}px`,
+                        '--dy': `${dy}px`,
+                        animation: `fwBurst ${b.dur}s ease-out ${b.delay}s infinite`,
+                      }}
+                    />
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        );
+      })()}
 
       {/* Header */}
       <header
@@ -336,17 +410,19 @@ export default function App() {
         </button>
       </header>
 
-      {loading ? (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '128px 0', color: COLORS.copperDark }}>
-          <div style={{ fontFamily: THEME.monoFont, fontSize: 11, letterSpacing: '0.2em' }}>
-            {THEME.brewingLabel}
+      <div style={{ position: 'relative', zIndex: 1, flex: 1, display: 'flex', flexDirection: 'column' }}>
+        {loading ? (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '128px 0', color: COLORS.copperDark }}>
+            <div style={{ fontFamily: THEME.monoFont, fontSize: 11, letterSpacing: '0.2em' }}>
+              {THEME.brewingLabel}
+            </div>
           </div>
-        </div>
-      ) : view === 'order' ? (
-        <OrderView {...{ temp, setTemp, base, setBase, addons, selected, setSelected, toggleSelected, sweetness, setSweetness, baseObj, decaf, setDecaf, requestPlaceOrder, submitOrder, askingName, setAskingName, orderPlaced }} />
-      ) : (
-        <AdminView addons={addons} saveMenu={saveMenu} />
-      )}
+        ) : view === 'order' ? (
+          <OrderView {...{ temp, setTemp, base, setBase, addons, selected, setSelected, toggleSelected, sweetness, setSweetness, baseObj, decaf, setDecaf, requestPlaceOrder, submitOrder, askingName, setAskingName, orderPlaced }} />
+        ) : (
+          <AdminView addons={addons} saveMenu={saveMenu} />
+        )}
+      </div>
     </div>
   );
 }
