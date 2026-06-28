@@ -169,43 +169,7 @@ const FOURTH_OF_JULY_THEME = {
   ownerHeroLine: ['Curate the ', 'celebration', '.'],
   notifyTitle: 'New order 🎆',
 
-  exclusiveDrinks: [
-    {
-      id: 'firecracker',
-      name: 'The Firecracker',
-      desc: 'Triple-shot mocha, cayenne, dark cherry, popping candy',
-      group: 'milk',
-      temps: ['hot', 'iced'],
-    },
-    {
-      id: 'redwhiteblue',
-      name: 'Red, White & Cold Brew',
-      desc: 'Cold brew layered with vanilla cream and blueberry',
-      group: 'milk',
-      temps: ['iced'],
-    },
-    {
-      id: 'starspangled',
-      name: 'Star-Spangled Latte',
-      desc: 'Vanilla latte with strawberry and a blue-spirulina swirl',
-      group: 'milk',
-      temps: ['hot', 'iced'],
-    },
-    {
-      id: 'libertybell',
-      name: 'The Liberty Bell',
-      desc: 'Salted caramel macchiato with toasted pecan',
-      group: 'milk',
-      temps: ['hot'],
-    },
-    {
-      id: 'freedomfizz',
-      name: 'Freedom Fizz',
-      desc: 'Espresso tonic over ice with orange and rosemary',
-      group: 'shots',
-      temps: ['iced'],
-    },
-  ],
+  exclusiveDrinks: [],
 };
 
 const THEMES = {
