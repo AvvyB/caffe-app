@@ -54,7 +54,7 @@ const CATEGORY_LABELS = {
 
 // Sweetness slider — discrete modes, each maps to a pump count
 const SWEETNESS_MODES = [
-  { id: 'perfect', label: 'Perfect', pumps: 1 },
+  { id: 'perfect', label: 'Slightly Sweetened', pumps: 1 },
   { id: 'notbad', label: 'Not a bad choice', pumps: 1.5 },
   { id: 'over', label: 'Over sweetened', pumps: 2 },
   { id: 'disgusting', label: 'Disgusting', pumps: 2.5 },
