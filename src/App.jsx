@@ -526,6 +526,13 @@ function OrderView({ temp, setTemp, base, setBase, addons, selected, setSelected
       const stillValid = ESPRESSO_BASES.find((b) => b.id === base)?.temps.includes(t);
       if (!stillValid) setBase(null);
     }
+    // Whipped cream isn't offered on hot drinks — drop it if switching to hot
+    if (t === 'hot') {
+      const whipIds = (addons.extras || []).filter((e) => e.name === 'Whipped Cream').map((e) => e.id);
+      if (whipIds.length) {
+        setSelected((s) => ({ ...s, extras: s.extras.filter((id) => !whipIds.includes(id)) }));
+      }
+    }
     setTemp(t);
     advance(1);
   };
@@ -706,12 +713,16 @@ function OrderView({ temp, setTemp, base, setBase, addons, selected, setSelected
               Optional — tap to add, then place your order.
             </p>
             {/* A mocha is already chocolate-sweet — no syrups or seasonal spices */}
-            {(base === 'mocha' ? ['extras'] : ['syrups', 'spices', 'extras']).map((cat, ci) => (
-              addons[cat]?.length > 0 && (
+            {(base === 'mocha' ? ['extras'] : ['syrups', 'spices', 'extras']).map((cat, ci) => {
+              // Whipped cream isn't offered on hot drinks
+              const items = (addons[cat] || []).filter(
+                (item) => !(cat === 'extras' && temp === 'hot' && item.name === 'Whipped Cream')
+              );
+              return items.length > 0 && (
                 <div key={cat} style={{ marginBottom: 22, animation: `fadeUp 0.4s ease-out ${ci * 70}ms both` }}>
                   <SubLabel>{CATEGORY_LABELS[cat]}</SubLabel>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                    {addons[cat].map((item) => {
+                    {items.map((item) => {
                       const isOn = selected[cat].includes(item.id);
                       return (
                         <button
@@ -740,8 +751,8 @@ function OrderView({ temp, setTemp, base, setBase, addons, selected, setSelected
                     <SweetnessSlider value={sweetness} onChange={setSweetness} />
                   )}
                 </div>
-              )
-            ))}
+              );
+            })}
           </>
         )}
       </div>
