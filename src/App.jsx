@@ -104,8 +104,11 @@ export default function App() {
       (snap) => {
         if (snap.exists()) {
           setAddons({ ...DEFAULT_ADDONS, ...snap.data() });
-        } else {
-          // First load — seed the document with defaults
+        } else if (!snap.metadata.fromCache) {
+          // Doc is genuinely missing on the SERVER (true first run) — seed defaults.
+          // Guard against cache-miss snapshots: onSnapshot also fires from the local
+          // cache, where an existing server doc can look non-existent. Seeding on that
+          // false negative would overwrite the real saved menu with the defaults.
           setDoc(MENU_DOC, DEFAULT_ADDONS).catch(console.error);
         }
         setLoading(false);
