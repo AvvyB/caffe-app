@@ -155,30 +155,62 @@ export default function App() {
     const decafLabel = decaf ? 'Decaf ' : '';
     const orderText = `${tempLabel} ${decafLabel}${baseObj?.name || ''}${addonsList.length ? ' · ' + addonsList.join(', ') : ''}`.trim();
 
-    // Save to Firestore for the open-orders list
-    try {
-      await addDoc(collection(db, 'orders'), {
+    // Primary path: hand the whole order to the server, which saves it AND
+    // sends the push itself — so the notification no longer depends on this
+    // browser staying alive. `keepalive` lets the request finish even if the
+    // tab is closed right after ordering; one retry covers a transient blip.
+    const orderPayload = {
+      order: {
         customerName: trimmed,
         temp,
         decaf,
         drink: baseObj?.name || '',
         addons: addonsList,
         summary: orderText,
-        status: 'open',
-        createdAt: serverTimestamp(),
-      });
-      // Bump the running total
-      await setDoc(
-        doc(db, 'stats', 'global'),
-        { totalOrders: increment(1), lastOrderAt: serverTimestamp() },
-        { merge: true }
-      );
-    } catch (e) {
-      console.error('order save failed', e);
+      },
+      notify: { title: THEME.notifyTitle, body: `${trimmed} — ${orderText}` },
+    };
+
+    let serverOk = false;
+    for (let attempt = 0; attempt < 2 && !serverOk; attempt++) {
+      try {
+        const res = await fetch('/api/order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          keepalive: true,
+          body: JSON.stringify(orderPayload),
+        });
+        serverOk = res.ok;
+      } catch (e) {
+        console.error(`order submit attempt ${attempt + 1} failed`, e);
+      }
     }
 
-    // Push notification
-    notifyOrder(`${trimmed} — ${orderText}`, THEME.notifyTitle);
+    // Fallback: if the server endpoint was unreachable, save the order
+    // client-side (resilient/offline-queued) and fire the old notify path so
+    // the order is never silently lost.
+    if (!serverOk) {
+      try {
+        await addDoc(collection(db, 'orders'), {
+          customerName: trimmed,
+          temp,
+          decaf,
+          drink: baseObj?.name || '',
+          addons: addonsList,
+          summary: orderText,
+          status: 'open',
+          createdAt: serverTimestamp(),
+        });
+        await setDoc(
+          doc(db, 'stats', 'global'),
+          { totalOrders: increment(1), lastOrderAt: serverTimestamp() },
+          { merge: true }
+        );
+      } catch (e) {
+        console.error('order save fallback failed', e);
+      }
+      notifyOrder(`${trimmed} — ${orderText}`, THEME.notifyTitle);
+    }
 
     setAskingName(false);
     setOrderPlaced(true);

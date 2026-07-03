@@ -16,13 +16,19 @@ self.addEventListener('push', (event) => {
     if (event.data) data.body = event.data.text();
   }
 
+  // Give every order its own tag so a new one never silently replaces the
+  // previous notification in the tray. `renotify` forces the device to alert
+  // again (sound/vibration) even if the tag were to collide.
+  const tag = data.tag || `order-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
   event.waitUntil(
     self.registration.showNotification(data.title, {
       body: data.body,
       icon: '/icon-192.png',
       badge: '/icon-192.png',
       vibrate: [200, 100, 200],
-      tag: 'new-order',
+      tag,
+      renotify: true,
       requireInteraction: false,
       data: { url: '/' },
     })
