@@ -2,10 +2,12 @@
 //
 // The client POSTs the order here (one request) and the SERVER then:
 //   1. writes the order to Firestore
-//   2. bumps the running order stats
-//   3. reads every push subscription itself
-//   4. sends a web push to each one
-//   5. prunes subscriptions the push service reports as gone (404/410)
+//   2. reads every push subscription itself
+//   3. sends a web push to each one
+//   4. prunes subscriptions the push service reports as gone (404/410)
+//
+// Note: the all-time "drinks served" counter is NOT bumped here — it is only
+// incremented when the owner marks an order Done (see completeOrder in the UI).
 //
 // This removes the old dependency on the ordering customer's browser staying
 // alive long enough to fetch subscriptions and fire the notification.
@@ -18,13 +20,11 @@
 import webpush from 'web-push';
 import {
   addDoc,
-  setDoc,
   deleteDoc,
   doc,
   collection,
   getDocs,
   serverTimestamp,
-  increment,
 } from 'firebase/firestore';
 import { db } from '../src/firebase.js';
 
@@ -48,8 +48,8 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'missing order' });
   }
 
-  // 1 + 2. Persist the order and bump stats. This is the part the customer
-  // actually cares about, so do it first and fail loudly if it breaks.
+  // 1. Persist the order. This is the part the customer actually cares about,
+  // so do it first and fail loudly if it breaks.
   let orderId;
   try {
     const ref = await addDoc(collection(db, 'orders'), {
@@ -63,18 +63,12 @@ export default async function handler(req, res) {
       createdAt: serverTimestamp(),
     });
     orderId = ref.id;
-
-    await setDoc(
-      doc(db, 'stats', 'global'),
-      { totalOrders: increment(1), lastOrderAt: serverTimestamp() },
-      { merge: true }
-    );
   } catch (err) {
     console.error('order save failed', err);
     return res.status(500).json({ error: 'order save failed' });
   }
 
-  // 3-5. Notify. A notification failure must NOT fail the order, so from here
+  // 2-4. Notify. A notification failure must NOT fail the order, so from here
   // on we only ever report problems — the order is already safe.
   let sent = 0;
   let failed = 0;
