@@ -967,6 +967,7 @@ function NameSheet({ orderSummary, orderAddons = [], onCancel, onConfirm }) {
             fontSize: 16,
             outline: 'none',
             background: COLORS.cream,
+            color: COLORS.espresso,
             border: `1px solid ${COLORS.espresso}20`,
             fontFamily: THEME.sansFont,
             marginBottom: 12,
