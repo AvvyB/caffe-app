@@ -201,11 +201,8 @@ export default function App() {
           status: 'open',
           createdAt: serverTimestamp(),
         });
-        await setDoc(
-          doc(db, 'stats', 'global'),
-          { totalOrders: increment(1), lastOrderAt: serverTimestamp() },
-          { merge: true }
-        );
+        // Note: the all-time counter is bumped when the order is marked Done,
+        // not at placement — see completeOrder in OpenOrders.
       } catch (e) {
         console.error('order save fallback failed', e);
       }
@@ -1312,6 +1309,7 @@ function OpenOrders() {
     return unsub;
   }, []);
 
+  // Marking an order Done is what counts it toward "drinks served · all time".
   const completeOrder = async (id) => {
     setBusyId(id);
     try {
@@ -1319,8 +1317,28 @@ function OpenOrders() {
         status: 'completed',
         completedAt: serverTimestamp(),
       });
+      await setDoc(
+        doc(db, 'stats', 'global'),
+        { totalOrders: increment(1), lastOrderAt: serverTimestamp() },
+        { merge: true }
+      );
     } catch (e) {
       console.error('complete failed', e);
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  // Removing an order takes it off the list WITHOUT counting it.
+  const removeOrder = async (id) => {
+    setBusyId(id);
+    try {
+      await updateDoc(doc(db, 'orders', id), {
+        status: 'removed',
+        removedAt: serverTimestamp(),
+      });
+    } catch (e) {
+      console.error('remove failed', e);
     } finally {
       setBusyId(null);
     }
@@ -1391,29 +1409,53 @@ function OpenOrders() {
                   {o.summary}
                 </div>
               </div>
-              <button
-                onClick={() => completeOrder(o.id)}
-                disabled={busyId === o.id}
-                style={{
-                  padding: '8px 14px',
-                  borderRadius: 999,
-                  fontSize: 12,
-                  fontWeight: 500,
-                  background: COLORS.copper,
-                  color: COLORS.paper,
-                  border: 'none',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  cursor: busyId === o.id ? 'wait' : 'pointer',
-                  opacity: busyId === o.id ? 0.5 : 1,
-                  fontFamily: 'inherit',
-                  flexShrink: 0,
-                  alignSelf: 'flex-start',
-                }}
-              >
-                <Check size={13} /> Done
-              </button>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0, alignSelf: 'flex-start' }}>
+                <button
+                  onClick={() => completeOrder(o.id)}
+                  disabled={busyId === o.id}
+                  style={{
+                    padding: '8px 14px',
+                    borderRadius: 999,
+                    fontSize: 12,
+                    fontWeight: 500,
+                    background: COLORS.copper,
+                    color: COLORS.paper,
+                    border: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
+                    cursor: busyId === o.id ? 'wait' : 'pointer',
+                    opacity: busyId === o.id ? 0.5 : 1,
+                    fontFamily: 'inherit',
+                  }}
+                >
+                  <Check size={13} /> Done
+                </button>
+                <button
+                  onClick={() => removeOrder(o.id)}
+                  disabled={busyId === o.id}
+                  title="Remove — does not count toward the total"
+                  style={{
+                    padding: '6px 14px',
+                    borderRadius: 999,
+                    fontSize: 12,
+                    fontWeight: 500,
+                    background: 'transparent',
+                    color: COLORS.selectedText,
+                    border: `1px solid ${COLORS.selectedText}40`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
+                    cursor: busyId === o.id ? 'wait' : 'pointer',
+                    opacity: busyId === o.id ? 0.5 : 0.8,
+                    fontFamily: 'inherit',
+                  }}
+                >
+                  <Trash2 size={12} /> Remove
+                </button>
+              </div>
             </div>
           ))}
         </div>
