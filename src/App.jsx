@@ -97,6 +97,20 @@ export default function App() {
   const [askingName, setAskingName] = useState(false);
   const [decaf, setDecaf] = useState(false);
 
+  // Match the browser chrome / iOS status-bar area to the active theme so the
+  // top of the screen doesn't show a mismatched bar (index.html hardcodes the
+  // default cream; override it here with the theme's page color).
+  useEffect(() => {
+    document.body.style.background = COLORS.paper;
+    let meta = document.querySelector('meta[name="theme-color"]');
+    if (!meta) {
+      meta = document.createElement('meta');
+      meta.setAttribute('name', 'theme-color');
+      document.head.appendChild(meta);
+    }
+    meta.setAttribute('content', COLORS.paper);
+  }, []);
+
   // Realtime sync from Firebase
   useEffect(() => {
     const unsub = onSnapshot(
