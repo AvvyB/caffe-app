@@ -92,6 +92,28 @@ export default function App() {
   const [view, setView] = useState('order');
   const [addons, setAddons] = useState(DEFAULT_ADDONS);
   const [loading, setLoading] = useState(true);
+
+  // Intro splash: spin the cup until the menu is loaded (min 1.5s, max 4s),
+  // then burst it into leaves and fade the overlay away.
+  const [intro, setIntro] = useState(() =>
+    typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? null : 'spin'
+  );
+  const [introMinDone, setIntroMinDone] = useState(false);
+  const [introForce, setIntroForce] = useState(false);
+  useEffect(() => {
+    const a = setTimeout(() => setIntroMinDone(true), 1500);
+    const b = setTimeout(() => setIntroForce(true), 4000);
+    return () => { clearTimeout(a); clearTimeout(b); };
+  }, []);
+  useEffect(() => {
+    if (intro !== 'spin') return;
+    if ((introMinDone && !loading) || introForce) setIntro('burst');
+  }, [intro, introMinDone, loading, introForce]);
+  useEffect(() => {
+    if (intro !== 'burst') return;
+    const t = setTimeout(() => setIntro(null), 1100);
+    return () => clearTimeout(t);
+  }, [intro]);
   const [temp, setTemp] = useState(null);
   const [base, setBase] = useState(null);
   const [selected, setSelected] = useState({ syrups: [], spices: [], extras: [] });
@@ -325,6 +347,24 @@ export default function App() {
           from { opacity: 0; transform: translateY(100%); }
           to   { opacity: 1; transform: translateY(0); }
         }
+        @keyframes introSpin {
+          from { transform: perspective(320px) rotateY(0deg); }
+          to   { transform: perspective(320px) rotateY(360deg); }
+        }
+        @keyframes introPop {
+          0%   { opacity: 1; transform: scale(1); }
+          35%  { opacity: 1; transform: scale(1.35); }
+          100% { opacity: 0; transform: scale(2.2); }
+        }
+        @keyframes introBurst {
+          0%   { opacity: 0; transform: translate(0, 0) rotate(0deg) scale(0.3); }
+          12%  { opacity: 1; }
+          100% { opacity: 0; transform: translate(var(--dx), var(--dy)) rotate(var(--spin)) scale(1); }
+        }
+        @keyframes introFade {
+          from { opacity: 1; }
+          to   { opacity: 0; }
+        }
         @keyframes leafFall {
           from { transform: translate3d(0, -8vh, 0) rotate(0deg); }
           to   { transform: translate3d(var(--drift), 108vh, 0) rotate(var(--spin)); }
@@ -413,6 +453,7 @@ export default function App() {
       })()}
 
       {COLORS.leaves && !askingName && <FallingLeaves />}
+      {intro && <IntroSplash phase={intro} />}
 
       {/* Header */}
       <header
@@ -1185,8 +1226,87 @@ function FeaturedButton({ item, active, onClick }) {
   );
 }
 
-// Subtle falling-leaves layer, enabled by COLORS.leaves in the active theme
 const LEAF_PALETTE = ['#c4612d', '#d9902a', '#8a3b12', '#b5451b', '#e0a83a'];
+function LeafShape({ size, color, style }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: 'block', ...style }}>
+      <path d="M12 2 C 5.5 6.5, 2.5 13, 12 22 C 21.5 13, 18.5 6.5, 12 2 Z" fill={color} />
+      <path d="M12 5 L 12 19" stroke={COLORS.paper} strokeWidth="1" strokeLinecap="round" opacity="0.6" />
+    </svg>
+  );
+}
+
+// Launch overlay: spinning cup badge, then it pops and bursts into leaves
+// (or theme-colored dots on themes without leaves) as the overlay fades out.
+function IntroSplash({ phase }) {
+  const bursting = phase === 'burst';
+  const dotColors = [COLORS.copper, COLORS.copperDark, COLORS.ice, COLORS.ctaBg];
+  const particles = useMemo(
+    () =>
+      Array.from({ length: 40 }, (_, i) => {
+        const angle = (Math.PI * 2 * i) / 40 + ((i * 0.37) % 0.4);
+        const dist = 150 + ((i * 53) % 230);
+        return {
+          dx: Math.cos(angle) * dist,
+          dy: Math.sin(angle) * dist,
+          size: 12 + ((i * 7) % 12),
+          spin: (i % 2 ? 1 : -1) * (180 + ((i * 47) % 400)),
+          delay: ((i * 13) % 14) / 100,
+          color: COLORS.leaves ? LEAF_PALETTE[i % LEAF_PALETTE.length] : dotColors[i % dotColors.length],
+        };
+      }),
+    []
+  );
+  return (
+    <div
+      aria-hidden
+      style={{
+        position: 'fixed', inset: 0, zIndex: 100,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: COLORS.paper,
+        pointerEvents: bursting ? 'none' : 'auto',
+        animation: bursting ? 'introFade 0.7s ease-out 0.3s both' : 'none',
+      }}
+    >
+      <div style={{ position: 'relative', width: 0, height: 0 }}>
+        <div
+          style={{
+            position: 'absolute', left: -44, top: -44, width: 88, height: 88, borderRadius: '50%',
+            background: COLORS.ctaBg, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: `0 12px 32px ${COLORS.espresso}30`,
+            animation: bursting
+              ? 'introPop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) both'
+              : 'introSpin 1.2s cubic-bezier(0.65, 0, 0.35, 1) infinite',
+          }}
+        >
+          <Coffee size={40} color={COLORS.ctaText} />
+        </div>
+        {bursting && particles.map((pt, i) => (
+          <span
+            key={i}
+            style={{
+              position: 'absolute', left: -pt.size / 2, top: -pt.size / 2,
+              '--dx': `${pt.dx}px`, '--dy': `${pt.dy}px`, '--spin': `${pt.spin}deg`,
+              animation: `introBurst 0.95s cubic-bezier(0.2, 0.7, 0.3, 1) ${pt.delay}s both`,
+              willChange: 'transform, opacity',
+            }}
+          >
+            {COLORS.leaves
+              ? <LeafShape size={pt.size} color={pt.color} />
+              : <span style={{ display: 'block', width: pt.size * 0.6, height: pt.size * 0.6, borderRadius: '50%', background: pt.color }} />}
+          </span>
+        ))}
+      </div>
+      {!bursting && (
+        <div style={{ position: 'absolute', bottom: 'calc(64px + env(safe-area-inset-bottom))', fontFamily: THEME.monoFont, fontSize: 11, letterSpacing: '0.2em', color: COLORS.copperDark, animation: 'fadeIn 0.6s ease-out 0.4s both' }}>
+          {THEME.brewingLabel}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Subtle falling-leaves layer, enabled by COLORS.leaves in the active theme
 function FallingLeaves() {
   const leaves = useMemo(
     () =>
@@ -1215,10 +1335,7 @@ function FallingLeaves() {
             opacity: l.opacity, willChange: 'transform',
           }}
         >
-          <svg width={l.size} height={l.size} viewBox="0 0 24 24" style={{ display: 'block', animation: `leafSway ${l.sway}s ease-in-out ${l.delay}s infinite alternate` }}>
-            <path d="M12 2 C 5.5 6.5, 2.5 13, 12 22 C 21.5 13, 18.5 6.5, 12 2 Z" fill={l.color} />
-            <path d="M12 5 L 12 19" stroke={COLORS.paper} strokeWidth="1" strokeLinecap="round" opacity="0.6" />
-          </svg>
+          <LeafShape size={l.size} color={l.color} style={{ animation: `leafSway ${l.sway}s ease-in-out ${l.delay}s infinite alternate` }} />
         </span>
       ))}
     </div>
