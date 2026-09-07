@@ -615,8 +615,8 @@ function OrderView({ temp, setTemp, base, setBase, addons, selected, setSelected
     setLeaving({ step, dir: d, id });
     setGust({ dir: d, id });
     setStep(n);
-    setTimeout(() => setLeaving((l) => (l?.id === id ? null : l)), 520);
-    setTimeout(() => setGust((g) => (g?.id === id ? null : g)), 1300);
+    setTimeout(() => setLeaving((l) => (l?.id === id ? null : l)), 980);
+    setTimeout(() => setGust((g) => (g?.id === id ? null : g)), 2800);
   };
   const back = () => go(step - 1);
 
@@ -909,7 +909,7 @@ function OrderView({ temp, setTemp, base, setBase, addons, selected, setSelected
             aria-hidden
             style={{
               position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', pointerEvents: 'none',
-              animation: `${leaving.dir > 0 ? 'pageOutLeft' : 'pageOutRight'} 0.5s cubic-bezier(0.4, 0, 0.8, 0.4) both`,
+              animation: `${leaving.dir > 0 ? 'pageOutLeft' : 'pageOutRight'} 0.95s cubic-bezier(0.4, 0, 0.7, 0.5) both`,
             }}
           >
             {renderPage(leaving.step)}
@@ -919,7 +919,7 @@ function OrderView({ temp, setTemp, base, setBase, addons, selected, setSelected
           key={step}
           style={{
             flex: 1, display: 'flex', flexDirection: 'column',
-            animation: `${dir > 0 ? 'pageInRight' : 'pageInLeft'} 0.55s cubic-bezier(0.22, 1, 0.36, 1) both`,
+            animation: `${dir > 0 ? 'pageInRight' : 'pageInLeft'} 1.05s cubic-bezier(0.22, 1, 0.36, 1) both`,
           }}
         >
           {renderPage(step)}
@@ -1251,11 +1251,11 @@ function LeafShape({ size, color, style }) {
 function LeafGust({ dir }) {
   const leaves = useMemo(
     () =>
-      Array.from({ length: 18 }, (_, i) => ({
+      Array.from({ length: 44 }, (_, i) => ({
         top: (i * 53 + 7) % 100,
-        size: 11 + ((i * 5) % 10),
-        delay: ((i * 37) % 22) / 100,
-        duration: 0.7 + ((i * 13) % 30) / 100,
+        size: 10 + ((i * 5) % 12),
+        delay: ((i * 37) % 55) / 100,
+        duration: 1.3 + ((i * 13) % 60) / 100,
         rise: (i % 2 ? -1 : 1) * (10 + ((i * 17) % 50)),
         spin: (i % 2 ? 1 : -1) * (240 + ((i * 61) % 360)),
         color: LEAF_PALETTE[i % LEAF_PALETTE.length],
