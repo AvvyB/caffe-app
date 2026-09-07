@@ -314,26 +314,12 @@ export default function App() {
           .fw-particle, .fw-flash { animation: none !important; opacity: 0 !important; }
         }
         @keyframes pageInRight {
-          from { opacity: 0; transform: translateX(70%); }
+          from { opacity: 0; transform: translateX(28px); }
           to   { opacity: 1; transform: translateX(0); }
         }
         @keyframes pageInLeft {
-          from { opacity: 0; transform: translateX(-70%); }
+          from { opacity: 0; transform: translateX(-28px); }
           to   { opacity: 1; transform: translateX(0); }
-        }
-        @keyframes pageOutLeft {
-          from { opacity: 1; transform: translateX(0) rotate(0deg); }
-          to   { opacity: 0; transform: translateX(-110%) rotate(-2deg); }
-        }
-        @keyframes pageOutRight {
-          from { opacity: 1; transform: translateX(0) rotate(0deg); }
-          to   { opacity: 0; transform: translateX(110%) rotate(2deg); }
-        }
-        @keyframes leafGust {
-          0%   { opacity: 0; transform: translate3d(0, 0, 0) rotate(0deg); }
-          12%  { opacity: 0.85; }
-          80%  { opacity: 0.85; }
-          100% { opacity: 0; transform: translate3d(var(--gx), var(--gy), 0) rotate(var(--spin)); }
         }
         @keyframes barIn {
           from { opacity: 0; transform: translateY(100%); }
@@ -353,7 +339,6 @@ export default function App() {
         }
         @media (prefers-reduced-motion: reduce) {
           .leaf-layer { display: none; }
-          .leaf-gust { display: none; }
           .featured-sheen { display: none; }
         }
         .step-enter { animation: fadeUp 0.45s ease-out both; }
@@ -602,22 +587,7 @@ function OrderView({ temp, setTemp, base, setBase, addons, selected, setSelected
   const milkBases = ESPRESSO_BASES.filter((b) => b.group === 'milk' && b.temps.includes(temp));
   const isFeatured = baseObj?.group === 'featured';
 
-  // Page transition: keep the old page mounted briefly so it can blow away,
-  // and fire a one-shot leaf gust in the wind's direction.
-  const [leaving, setLeaving] = useState(null);
-  const [gust, setGust] = useState(null);
-  const transitionId = useRef(0);
-  const go = (n) => {
-    if (n === step) return;
-    const d = n > step ? 1 : -1;
-    const id = ++transitionId.current;
-    setDir(d);
-    setLeaving({ step, dir: d, id });
-    setGust({ dir: d, id });
-    setStep(n);
-    setTimeout(() => setLeaving((l) => (l?.id === id ? null : l)), 520);
-    setTimeout(() => setGust((g) => (g?.id === id ? null : g)), 1300);
-  };
+  const go = (n) => { setDir(n > step ? 1 : -1); setStep(n); };
   const back = () => go(step - 1);
 
   // Auto-advance, but pause briefly so the tapped option's highlight is visible
@@ -670,206 +640,6 @@ function OrderView({ temp, setTemp, base, setBase, addons, selected, setSelected
 
   const STEP_LABELS = ['01 · Hot or iced', '02 · Choose your drink', '03 · Caffeine', isFeatured ? '04 · Whipped cream?' : '04 · Make it yours'];
 
-  // One page of the flow. Rendered twice during a transition: the outgoing
-  // step slides off while the new one slides in.
-  const renderPage = (n) => (
-    <>
-      {/* Page header — hero on the first page, back + label after */}
-      {n === 0 ? (
-        <div style={{ marginBottom: 32 }}>
-          <div style={sectionLabelStyle}>{THEME.heroPre}</div>
-          <h1 style={{ fontFamily: THEME.serifFont, fontSize: 44, fontWeight: 500, lineHeight: 0.95, letterSpacing: '-0.03em', margin: 0 }}>
-            {THEME.heroLine[0]}<em style={{ fontStyle: 'italic', color: COLORS.copperDark }}>{THEME.heroLine[1]}</em>{THEME.heroLine[2]}
-          </h1>
-        </div>
-      ) : (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 22 }}>
-          <button
-            onClick={back}
-            aria-label="Back"
-            style={{
-              width: 36, height: 36, borderRadius: '50%',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: COLORS.cream, color: COLORS.espresso,
-              border: `1px solid ${COLORS.espresso}15`, cursor: 'pointer', flexShrink: 0,
-            }}
-          >
-            <ChevronLeft size={18} />
-          </button>
-          <div style={{ ...sectionLabelStyle, marginBottom: 0 }}>{STEP_LABELS[n]}</div>
-        </div>
-      )}
-
-      {/* Step 0 — temperature */}
-      {n === 0 && (
-        <>
-          <SectionLabel>{STEP_LABELS[0]}</SectionLabel>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            {[
-              { t: 'hot', icon: <Flame size={30} />, label: 'Hot', color: COLORS.hotColor },
-              { t: 'iced', icon: <Snowflake size={30} />, label: 'Iced', color: COLORS.ice },
-            ].map((o, i) => (
-              <div key={o.t} style={{ animation: `fadeUp 0.45s ease-out ${i * 80}ms both` }}>
-                <TempButton active={temp === o.t} large onClick={() => chooseTemp(o.t)} icon={o.icon} label={o.label} activeColor={o.color} />
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-
-      {/* Step 1 — drink */}
-      {n === 1 && (
-        <>
-          {featuredBases.length > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
-              {featuredBases.map((b, i) => (
-                <div key={b.id} style={{ animation: `fadeUp 0.4s ease-out ${i * 45}ms both` }}>
-                  <FeaturedButton item={b} active={base === b.id} onClick={() => chooseBase(b.id)} />
-                </div>
-              ))}
-            </div>
-          )}
-          {shotBases.length > 0 && (
-            <>
-              <SubLabel>Espresso shots</SubLabel>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
-                {shotBases.map((b, i) => (
-                  <div key={b.id} style={{ animation: `fadeUp 0.4s ease-out ${(featuredBases.length + i) * 45}ms both` }}>
-                    <BaseButton item={b} active={base === b.id} onClick={() => chooseBase(b.id)} />
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-          {milkBases.length > 0 && (
-            <>
-              <SubLabel>Espresso with milk</SubLabel>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {milkBases.map((b, i) => (
-                  <div key={b.id} style={{ animation: `fadeUp 0.4s ease-out ${(featuredBases.length + shotBases.length + i) * 45}ms both` }}>
-                    <BaseButton item={b} active={base === b.id} onClick={() => chooseBase(b.id)} />
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-        </>
-      )}
-
-      {/* Step 2 — caffeine */}
-      {n === 2 && (
-        <>
-          <p style={{ fontSize: 14, opacity: 0.7, marginTop: 0, marginBottom: 18 }}>
-            How do you want your {baseObj?.name}?
-          </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {[
-              { v: false, label: 'Regular', desc: 'Full caffeine, full lift' },
-              { v: true, label: 'Decaf', desc: 'All the flavor, none of the buzz' },
-            ].map((o, i) => (
-              <div key={o.label} style={{ animation: `fadeUp 0.4s ease-out ${i * 70}ms both` }}>
-                <button
-                  onClick={() => chooseCaffeine(o.v)}
-                  style={{
-                    width: '100%', textAlign: 'left', padding: '16px 18px', borderRadius: 16,
-                    background: decaf === o.v ? COLORS.selectedBg : COLORS.cream,
-                    color: decaf === o.v ? COLORS.selectedText : COLORS.espresso,
-                    border: `1px solid ${decaf === o.v ? COLORS.copper : COLORS.espresso + '15'}`,
-                    cursor: 'pointer', fontFamily: 'inherit',
-                  }}
-                >
-                  <div style={{ fontFamily: THEME.serifFont, fontSize: 18, fontWeight: 500, letterSpacing: '-0.01em' }}>{o.label}</div>
-                  <div style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }}>{o.desc}</div>
-                </button>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-
-      {/* Step 3 (featured drinks) — whipped cream, nothing else */}
-      {n === 3 && isFeatured && (
-        <>
-          <p style={{ fontSize: 14, opacity: 0.7, marginTop: 0, marginBottom: 18 }}>
-            Top your {baseObj?.name} with whipped cream?
-          </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {[
-              { v: true, label: 'Whipped cream', desc: 'Piled high, dusted with spice' },
-              { v: false, label: 'No whip', desc: 'Keep it simple' },
-            ].map((o, i) => (
-              <div key={o.label} style={{ animation: `fadeUp 0.4s ease-out ${i * 70}ms both` }}>
-                <button
-                  onClick={() => setWhip(o.v)}
-                  style={{
-                    width: '100%', textAlign: 'left', padding: '16px 18px', borderRadius: 16,
-                    background: whip === o.v ? COLORS.selectedBg : COLORS.cream,
-                    color: whip === o.v ? COLORS.selectedText : COLORS.espresso,
-                    border: `1px solid ${whip === o.v ? COLORS.copper : COLORS.espresso + '15'}`,
-                    cursor: 'pointer', fontFamily: 'inherit',
-                  }}
-                >
-                  <div style={{ fontFamily: THEME.serifFont, fontSize: 18, fontWeight: 500, letterSpacing: '-0.01em' }}>{o.label}</div>
-                  <div style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }}>{o.desc}</div>
-                </button>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-
-      {/* Step 3 — customize (all add-ons on one page) */}
-      {n === 3 && !isFeatured && (
-        <>
-          <p style={{ fontSize: 14, opacity: 0.7, marginTop: 0, marginBottom: 20 }}>
-            Optional — tap to add, then place your order.
-          </p>
-          {/* A mocha is already chocolate-sweet — no syrups or seasonal spices */}
-          {(base === 'mocha' ? ['extras'] : ['syrups', 'spices', 'extras']).map((cat, ci) => {
-            // Whipped cream isn't offered on hot drinks
-            const items = (addons[cat] || []).filter(
-              (item) => !(cat === 'extras' && temp === 'hot' && item.name === 'Whipped Cream')
-            );
-            return items.length > 0 && (
-              <div key={cat} style={{ marginBottom: 22, animation: `fadeUp 0.4s ease-out ${ci * 70}ms both` }}>
-                <SubLabel>{CATEGORY_LABELS[cat]}</SubLabel>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                  {items.map((item) => {
-                    const isOn = selected[cat].includes(item.id);
-                    return (
-                      <button
-                        key={item.id}
-                        className="chip"
-                        onClick={() => toggleSelected(cat, item.id)}
-                        style={{
-                          padding: '8px 14px',
-                          borderRadius: 999,
-                          fontSize: 14,
-                          fontWeight: 500,
-                          background: isOn ? COLORS.copper : 'transparent',
-                          color: isOn ? COLORS.paper : COLORS.espresso,
-                          border: `1px solid ${isOn ? COLORS.copper : COLORS.espresso + '30'}`,
-                          cursor: 'pointer',
-                          fontFamily: 'inherit',
-                        }}
-                      >
-                        {item.name}
-                      </button>
-                    );
-                  })}
-                </div>
-                {/* Sweetness lives under the syrup picker, once a sweetened syrup is chosen */}
-                {cat === 'syrups' && sweetenedSyrup(selected, addons) && (
-                  <SweetnessSlider value={sweetness} onChange={setSweetness} />
-                )}
-              </div>
-            );
-          })}
-        </>
-      )}
-    </>
-  );
-
   return (
     <div
       onTouchStart={onTouchStart}
@@ -902,30 +672,209 @@ function OrderView({ temp, setTemp, base, setBase, addons, selected, setSelected
         ))}
       </div>
 
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', overflowY: 'clip' }}>
-        {leaving && (
-          <div
-            key={`out-${leaving.id}`}
-            aria-hidden
-            style={{
-              position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', pointerEvents: 'none',
-              animation: `${leaving.dir > 0 ? 'pageOutLeft' : 'pageOutRight'} 0.5s cubic-bezier(0.4, 0, 0.8, 0.4) both`,
-            }}
-          >
-            {renderPage(leaving.step)}
+      <div
+        key={step}
+        style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          animation: `${dir > 0 ? 'pageInRight' : 'pageInLeft'} 0.45s cubic-bezier(0.33, 1, 0.68, 1) both`,
+        }}
+      >
+        {/* Page header — hero on the first page, back + label after */}
+        {step === 0 ? (
+          <div style={{ marginBottom: 32 }}>
+            <div style={sectionLabelStyle}>{THEME.heroPre}</div>
+            <h1 style={{ fontFamily: THEME.serifFont, fontSize: 44, fontWeight: 500, lineHeight: 0.95, letterSpacing: '-0.03em', margin: 0 }}>
+              {THEME.heroLine[0]}<em style={{ fontStyle: 'italic', color: COLORS.copperDark }}>{THEME.heroLine[1]}</em>{THEME.heroLine[2]}
+            </h1>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 22 }}>
+            <button
+              onClick={back}
+              aria-label="Back"
+              style={{
+                width: 36, height: 36, borderRadius: '50%',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: COLORS.cream, color: COLORS.espresso,
+                border: `1px solid ${COLORS.espresso}15`, cursor: 'pointer', flexShrink: 0,
+              }}
+            >
+              <ChevronLeft size={18} />
+            </button>
+            <div style={{ ...sectionLabelStyle, marginBottom: 0 }}>{STEP_LABELS[step]}</div>
           </div>
         )}
-        <div
-          key={step}
-          style={{
-            flex: 1, display: 'flex', flexDirection: 'column',
-            animation: `${dir > 0 ? 'pageInRight' : 'pageInLeft'} 0.55s cubic-bezier(0.22, 1, 0.36, 1) both`,
-          }}
-        >
-          {renderPage(step)}
-        </div>
+
+        {/* Step 0 — temperature */}
+        {step === 0 && (
+          <>
+            <SectionLabel>{STEP_LABELS[0]}</SectionLabel>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              {[
+                { t: 'hot', icon: <Flame size={30} />, label: 'Hot', color: COLORS.hotColor },
+                { t: 'iced', icon: <Snowflake size={30} />, label: 'Iced', color: COLORS.ice },
+              ].map((o, i) => (
+                <div key={o.t} style={{ animation: `fadeUp 0.45s ease-out ${i * 80}ms both` }}>
+                  <TempButton active={temp === o.t} large onClick={() => chooseTemp(o.t)} icon={o.icon} label={o.label} activeColor={o.color} />
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* Step 1 — drink */}
+        {step === 1 && (
+          <>
+            {featuredBases.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
+                {featuredBases.map((b, i) => (
+                  <div key={b.id} style={{ animation: `fadeUp 0.4s ease-out ${i * 45}ms both` }}>
+                    <FeaturedButton item={b} active={base === b.id} onClick={() => chooseBase(b.id)} />
+                  </div>
+                ))}
+              </div>
+            )}
+            {shotBases.length > 0 && (
+              <>
+                <SubLabel>Espresso shots</SubLabel>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+                  {shotBases.map((b, i) => (
+                    <div key={b.id} style={{ animation: `fadeUp 0.4s ease-out ${(featuredBases.length + i) * 45}ms both` }}>
+                      <BaseButton item={b} active={base === b.id} onClick={() => chooseBase(b.id)} />
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+            {milkBases.length > 0 && (
+              <>
+                <SubLabel>Espresso with milk</SubLabel>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {milkBases.map((b, i) => (
+                    <div key={b.id} style={{ animation: `fadeUp 0.4s ease-out ${(featuredBases.length + shotBases.length + i) * 45}ms both` }}>
+                      <BaseButton item={b} active={base === b.id} onClick={() => chooseBase(b.id)} />
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </>
+        )}
+
+        {/* Step 2 — caffeine */}
+        {step === 2 && (
+          <>
+            <p style={{ fontSize: 14, opacity: 0.7, marginTop: 0, marginBottom: 18 }}>
+              How do you want your {baseObj?.name}?
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {[
+                { v: false, label: 'Regular', desc: 'Full caffeine, full lift' },
+                { v: true, label: 'Decaf', desc: 'All the flavor, none of the buzz' },
+              ].map((o, i) => (
+                <div key={o.label} style={{ animation: `fadeUp 0.4s ease-out ${i * 70}ms both` }}>
+                  <button
+                    onClick={() => chooseCaffeine(o.v)}
+                    style={{
+                      width: '100%', textAlign: 'left', padding: '16px 18px', borderRadius: 16,
+                      background: decaf === o.v ? COLORS.selectedBg : COLORS.cream,
+                      color: decaf === o.v ? COLORS.selectedText : COLORS.espresso,
+                      border: `1px solid ${decaf === o.v ? COLORS.copper : COLORS.espresso + '15'}`,
+                      cursor: 'pointer', fontFamily: 'inherit',
+                    }}
+                  >
+                    <div style={{ fontFamily: THEME.serifFont, fontSize: 18, fontWeight: 500, letterSpacing: '-0.01em' }}>{o.label}</div>
+                    <div style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }}>{o.desc}</div>
+                  </button>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* Step 3 (featured drinks) — whipped cream, nothing else */}
+        {step === 3 && isFeatured && (
+          <>
+            <p style={{ fontSize: 14, opacity: 0.7, marginTop: 0, marginBottom: 18 }}>
+              Top your {baseObj?.name} with whipped cream?
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {[
+                { v: true, label: 'Whipped cream', desc: 'Piled high, dusted with spice' },
+                { v: false, label: 'No whip', desc: 'Keep it simple' },
+              ].map((o, i) => (
+                <div key={o.label} style={{ animation: `fadeUp 0.4s ease-out ${i * 70}ms both` }}>
+                  <button
+                    onClick={() => setWhip(o.v)}
+                    style={{
+                      width: '100%', textAlign: 'left', padding: '16px 18px', borderRadius: 16,
+                      background: whip === o.v ? COLORS.selectedBg : COLORS.cream,
+                      color: whip === o.v ? COLORS.selectedText : COLORS.espresso,
+                      border: `1px solid ${whip === o.v ? COLORS.copper : COLORS.espresso + '15'}`,
+                      cursor: 'pointer', fontFamily: 'inherit',
+                    }}
+                  >
+                    <div style={{ fontFamily: THEME.serifFont, fontSize: 18, fontWeight: 500, letterSpacing: '-0.01em' }}>{o.label}</div>
+                    <div style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }}>{o.desc}</div>
+                  </button>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* Step 3 — customize (all add-ons on one page) */}
+        {step === 3 && !isFeatured && (
+          <>
+            <p style={{ fontSize: 14, opacity: 0.7, marginTop: 0, marginBottom: 20 }}>
+              Optional — tap to add, then place your order.
+            </p>
+            {/* A mocha is already chocolate-sweet — no syrups or seasonal spices */}
+            {(base === 'mocha' ? ['extras'] : ['syrups', 'spices', 'extras']).map((cat, ci) => {
+              // Whipped cream isn't offered on hot drinks
+              const items = (addons[cat] || []).filter(
+                (item) => !(cat === 'extras' && temp === 'hot' && item.name === 'Whipped Cream')
+              );
+              return items.length > 0 && (
+                <div key={cat} style={{ marginBottom: 22, animation: `fadeUp 0.4s ease-out ${ci * 70}ms both` }}>
+                  <SubLabel>{CATEGORY_LABELS[cat]}</SubLabel>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {items.map((item) => {
+                      const isOn = selected[cat].includes(item.id);
+                      return (
+                        <button
+                          key={item.id}
+                          className="chip"
+                          onClick={() => toggleSelected(cat, item.id)}
+                          style={{
+                            padding: '8px 14px',
+                            borderRadius: 999,
+                            fontSize: 14,
+                            fontWeight: 500,
+                            background: isOn ? COLORS.copper : 'transparent',
+                            color: isOn ? COLORS.paper : COLORS.espresso,
+                            border: `1px solid ${isOn ? COLORS.copper : COLORS.espresso + '30'}`,
+                            cursor: 'pointer',
+                            fontFamily: 'inherit',
+                          }}
+                        >
+                          {item.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {/* Sweetness lives under the syrup picker, once a sweetened syrup is chosen */}
+                  {cat === 'syrups' && sweetenedSyrup(selected, addons) && (
+                    <SweetnessSlider value={sweetness} onChange={setSweetness} />
+                  )}
+                </div>
+              );
+            })}
+          </>
+        )}
       </div>
-      {COLORS.leaves && gust && <LeafGust key={gust.id} dir={gust.dir} />}
 
       {step === 3 && (!isFeatured || whip !== null) && (
         <div
@@ -1236,52 +1185,8 @@ function FeaturedButton({ item, active, onClick }) {
   );
 }
 
-const LEAF_PALETTE = ['#c4612d', '#d9902a', '#8a3b12', '#b5451b', '#e0a83a'];
-function LeafShape({ size, color, style }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: 'block', ...style }}>
-      <path d="M12 2 C 5.5 6.5, 2.5 13, 12 22 C 21.5 13, 18.5 6.5, 12 2 Z" fill={color} />
-      <path d="M12 5 L 12 19" stroke={COLORS.paper} strokeWidth="1" strokeLinecap="round" opacity="0.6" />
-    </svg>
-  );
-}
-
-// One-shot gust that sweeps leaves across the screen on a page change.
-// dir 1 = forward (wind blows right→left), -1 = back (left→right).
-function LeafGust({ dir }) {
-  const leaves = useMemo(
-    () =>
-      Array.from({ length: 18 }, (_, i) => ({
-        top: (i * 53 + 7) % 100,
-        size: 11 + ((i * 5) % 10),
-        delay: ((i * 37) % 22) / 100,
-        duration: 0.7 + ((i * 13) % 30) / 100,
-        rise: (i % 2 ? -1 : 1) * (10 + ((i * 17) % 50)),
-        spin: (i % 2 ? 1 : -1) * (240 + ((i * 61) % 360)),
-        color: LEAF_PALETTE[i % LEAF_PALETTE.length],
-      })),
-    []
-  );
-  return (
-    <div aria-hidden className="leaf-gust" style={{ position: 'fixed', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 3 }}>
-      {leaves.map((l, i) => (
-        <span
-          key={i}
-          style={{
-            position: 'absolute', top: `${l.top}%`, left: dir > 0 ? '100%' : '-8%',
-            '--gx': `${dir > 0 ? -125 : 125}vw`, '--gy': `${l.rise}px`, '--spin': `${l.spin}deg`,
-            animation: `leafGust ${l.duration}s cubic-bezier(0.2, 0.6, 0.3, 1) ${l.delay}s both`,
-            willChange: 'transform, opacity',
-          }}
-        >
-          <LeafShape size={l.size} color={l.color} />
-        </span>
-      ))}
-    </div>
-  );
-}
-
 // Subtle falling-leaves layer, enabled by COLORS.leaves in the active theme
+const LEAF_PALETTE = ['#c4612d', '#d9902a', '#8a3b12', '#b5451b', '#e0a83a'];
 function FallingLeaves() {
   const leaves = useMemo(
     () =>
@@ -1310,7 +1215,10 @@ function FallingLeaves() {
             opacity: l.opacity, willChange: 'transform',
           }}
         >
-          <LeafShape size={l.size} color={l.color} style={{ animation: `leafSway ${l.sway}s ease-in-out ${l.delay}s infinite alternate` }} />
+          <svg width={l.size} height={l.size} viewBox="0 0 24 24" style={{ display: 'block', animation: `leafSway ${l.sway}s ease-in-out ${l.delay}s infinite alternate` }}>
+            <path d="M12 2 C 5.5 6.5, 2.5 13, 12 22 C 21.5 13, 18.5 6.5, 12 2 Z" fill={l.color} />
+            <path d="M12 5 L 12 19" stroke={COLORS.paper} strokeWidth="1" strokeLinecap="round" opacity="0.6" />
+          </svg>
         </span>
       ))}
     </div>
