@@ -23,6 +23,11 @@ const DEFAULT_THEME = {
     selectedBg: '#2a1810',  // espresso
     selectedText: '#f4ede0', // cream
     starfield: false,
+    leaves: false,
+    // Featured (seasonal) drink card
+    featuredBg: 'linear-gradient(135deg, #b8743d 0%, #8f5526 100%)',
+    featuredText: '#fbf7ee',
+    featuredGlow: '#b8743d',
   },
 
   // Fonts
@@ -72,6 +77,10 @@ const STAR_WARS_THEME = {
     // Selected drink — gold-bordered dark panel for stark contrast
     selectedBg: '#2a2418',     // dark olive-brown (raised gold-tinted panel)
     selectedText: '#ffb700',   // bright gold
+    leaves: false,
+    featuredBg: 'linear-gradient(135deg, #ffb700 0%, #c98a00 100%)',
+    featuredText: '#06060d',
+    featuredGlow: '#ffb700',
   },
 
   fontsLink:
@@ -145,6 +154,10 @@ const FOURTH_OF_JULY_THEME = {
     accent: '#e23b4e',
     danger: '#e23b4e',         // firework red
     fireworks: true,           // signal to App.jsx to render the fireworks layer
+    leaves: false,
+    featuredBg: 'linear-gradient(135deg, #e23b4e 0%, #5b8def 100%)',
+    featuredText: '#ffffff',
+    featuredGlow: '#e23b4e',
     // Primary CTA — bold red so it pops against the navy night
     ctaBg: '#cf2d3f',
     ctaText: '#ffffff',
@@ -172,10 +185,55 @@ const FOURTH_OF_JULY_THEME = {
   exclusiveDrinks: [],
 };
 
+const AUTUMN_THEME = {
+  id: 'autumn',
+
+  colors: {
+    paper: '#fbf3e6',          // warm parchment page
+    cream: '#f6e8d3',          // card surface
+    creamDark: '#ecd8b8',      // raised / hover
+    espresso: '#3b2113',       // primary text — deep roast
+    espressoLight: '#6b3f22',
+    copper: '#c4612d',         // burnt orange — selected chips
+    copperDark: '#8a3b12',     // rust — italic accents, labels
+    ice: '#5f8a9e',            // cool overcast blue for iced
+    accent: '#c4612d',
+    danger: '#b8433a',
+    ctaBg: '#7a2e12',          // deep rust CTA
+    ctaText: '#fbf3e6',
+    hotColor: '#b5451b',
+    selectedBg: '#5a2b12',
+    selectedText: '#fbe9d0',
+    starfield: false,
+    leaves: true,              // signal to App.jsx to render falling leaves
+    featuredBg: 'linear-gradient(135deg, #e07a2f 0%, #b8451b 60%, #8a2f12 100%)',
+    featuredText: '#fff3e0',
+    featuredGlow: '#e07a2f',
+  },
+
+  fontsLink:
+    'https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap',
+  serifFont: "'Fraunces', serif",
+  sansFont: "'DM Sans', sans-serif",
+  monoFont: "'JetBrains Mono', monospace",
+
+  brandName: 'Caffè',
+  tagline: 'Autumn edition',
+  heroPre: '— The Harvest Menu',
+  heroLine: ['Cozy up with a ', 'warm', ' cup.'],
+  brewingLabel: 'STEEPING...',
+  ownerHeroPre: '— Owner panel',
+  ownerHeroLine: ['Curate the ', 'harvest', '.'],
+  notifyTitle: 'New order 🍂',
+
+  exclusiveDrinks: [],
+};
+
 const THEMES = {
   default: DEFAULT_THEME,
   starwars: STAR_WARS_THEME,
   fourthofjuly: FOURTH_OF_JULY_THEME,
+  autumn: AUTUMN_THEME,
 };
 
 export function getTheme(name) {

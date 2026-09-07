@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Trash2, Coffee, Settings, ShoppingBag, Check, ChevronLeft, Snowflake, Flame, Bell, BellOff, Lock, LogOut, X, Inbox } from 'lucide-react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { Plus, Trash2, Coffee, Settings, ShoppingBag, Check, ChevronLeft, Snowflake, Flame, Bell, BellOff, Lock, LogOut, X, Inbox, Leaf, Sparkles } from 'lucide-react';
 import { onSnapshot, setDoc, addDoc, updateDoc, collection, query, where, orderBy, doc, serverTimestamp, increment } from 'firebase/firestore';
 import { MENU_DOC, db } from './firebase';
 import { pushSupported, checkSubscribed, subscribeToPush, unsubscribeFromPush, notifyOrder } from './push';
@@ -13,7 +13,10 @@ const THEME = getTheme(THEME_NAME);
 const COLORS = THEME.colors;
 const FONTS_LINK = THEME.fontsLink;
 
+// group: 'featured' drinks are fixed recipes — they skip the add-ons page and
+// only ask about whipped cream. Rendered at the top of the drink list.
 const BASE_DRINKS = [
+  { id: 'psl', name: 'Pumpkin Spice Latte', desc: 'Espresso, steamed milk, real pumpkin, and warm autumn spices', group: 'featured', temps: ['hot', 'iced'] },
   { id: 'single', name: 'Single Shot', desc: 'One pure shot of espresso', group: 'shots', temps: ['hot'] },
   { id: 'doppio', name: 'Doppio', desc: 'A double shot, twice the depth', group: 'shots', temps: ['hot'] },
   { id: 'americano', name: 'Americano', desc: 'Espresso lengthened with water', group: 'shots', temps: ['hot', 'iced'] },
@@ -96,6 +99,7 @@ export default function App() {
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [askingName, setAskingName] = useState(false);
   const [decaf, setDecaf] = useState(false);
+  const [whip, setWhip] = useState(null); // featured drinks only: true / false / null (unanswered)
 
   // Match the browser chrome / iOS status-bar area to the active theme so the
   // top of the screen doesn't show a mismatched bar (index.html hardcodes the
@@ -155,6 +159,7 @@ export default function App() {
   };
 
   const baseObj = ESPRESSO_BASES.find((b) => b.id === base);
+  const isFeatured = baseObj?.group === 'featured';
 
   // Step 1 — user tapped "Place order" — open the name sheet
   const requestPlaceOrder = () => setAskingName(true);
@@ -165,7 +170,9 @@ export default function App() {
 
     // Build readable strings
     const tempLabel = temp ? temp.charAt(0).toUpperCase() + temp.slice(1) : '';
-    const addonsList = buildAddonsList(selected, addons, sweetness);
+    const addonsList = isFeatured
+      ? (whip ? ['Whipped Cream'] : [])
+      : buildAddonsList(selected, addons, sweetness);
     const decafLabel = decaf ? 'Decaf ' : '';
     const orderText = `${tempLabel} ${decafLabel}${baseObj?.name || ''}${addonsList.length ? ' · ' + addonsList.join(', ') : ''}`.trim();
 
@@ -230,6 +237,7 @@ export default function App() {
       setTemp(null);
       setBase(null);
       setDecaf(false);
+      setWhip(null);
       setSelected({ syrups: [], spices: [], extras: [] });
       setSweetness(0);
     }, 3500);
@@ -317,6 +325,22 @@ export default function App() {
           from { opacity: 0; transform: translateY(100%); }
           to   { opacity: 1; transform: translateY(0); }
         }
+        @keyframes leafFall {
+          from { transform: translate3d(0, -8vh, 0) rotate(0deg); }
+          to   { transform: translate3d(var(--drift), 108vh, 0) rotate(var(--spin)); }
+        }
+        @keyframes leafSway {
+          from { transform: translateX(-10px) rotate(-18deg); }
+          to   { transform: translateX(10px) rotate(18deg); }
+        }
+        @keyframes sheen {
+          0%, 60% { transform: translateX(0); }
+          100%    { transform: translateX(350%); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .leaf-layer { display: none; }
+          .featured-sheen { display: none; }
+        }
         .step-enter { animation: fadeUp 0.45s ease-out both; }
         .new-order { animation: fadeUp 0.45s ease-out both, shimmerNew 1.2s ease-out 0.1s both; }
         button { transition: transform 0.12s ease-out, background 0.18s ease-out, color 0.18s ease-out, border-color 0.18s ease-out; }
@@ -387,6 +411,8 @@ export default function App() {
           </div>
         );
       })()}
+
+      {COLORS.leaves && !askingName && <FallingLeaves />}
 
       {/* Header */}
       <header
@@ -464,7 +490,7 @@ export default function App() {
             </div>
           </div>
         ) : view === 'order' ? (
-          <OrderView {...{ temp, setTemp, base, setBase, addons, selected, setSelected, toggleSelected, sweetness, setSweetness, baseObj, decaf, setDecaf, requestPlaceOrder, submitOrder, askingName, setAskingName, orderPlaced }} />
+          <OrderView {...{ temp, setTemp, base, setBase, addons, selected, setSelected, toggleSelected, sweetness, setSweetness, baseObj, decaf, setDecaf, whip, setWhip, requestPlaceOrder, submitOrder, askingName, setAskingName, orderPlaced }} />
         ) : (
           <AdminView addons={addons} saveMenu={saveMenu} />
         )}
@@ -473,8 +499,8 @@ export default function App() {
   );
 }
 
-function OrderView({ temp, setTemp, base, setBase, addons, selected, setSelected, toggleSelected, sweetness, setSweetness, baseObj, decaf, setDecaf, requestPlaceOrder, submitOrder, askingName, setAskingName, orderPlaced }) {
-  // Paged flow: 0 temp · 1 drink · 2 caffeine · 3 customize
+function OrderView({ temp, setTemp, base, setBase, addons, selected, setSelected, toggleSelected, sweetness, setSweetness, baseObj, decaf, setDecaf, whip, setWhip, requestPlaceOrder, submitOrder, askingName, setAskingName, orderPlaced }) {
+  // Paged flow: 0 temp · 1 drink · 2 caffeine · 3 customize (or whipped cream for featured drinks)
   const [step, setStep] = useState(0);
   const [dir, setDir] = useState(1);
   const touch = useRef({ x: 0, y: 0 });
@@ -556,8 +582,10 @@ function OrderView({ temp, setTemp, base, setBase, addons, selected, setSelected
     );
   }
 
+  const featuredBases = ESPRESSO_BASES.filter((b) => b.group === 'featured' && b.temps.includes(temp));
   const shotBases = ESPRESSO_BASES.filter((b) => b.group === 'shots' && b.temps.includes(temp));
   const milkBases = ESPRESSO_BASES.filter((b) => b.group === 'milk' && b.temps.includes(temp));
+  const isFeatured = baseObj?.group === 'featured';
 
   const go = (n) => { setDir(n > step ? 1 : -1); setStep(n); };
   const back = () => go(step - 1);
@@ -580,11 +608,19 @@ function OrderView({ temp, setTemp, base, setBase, addons, selected, setSelected
     advance(1);
   };
   const chooseBase = (id) => {
+    const featured = ESPRESSO_BASES.find((b) => b.id === id)?.group === 'featured';
     setBase(id);
-    // Mocha hides syrups & spices — drop any earlier picks so they don't ride along
-    if (id === 'mocha') {
-      setSelected((s) => ({ ...s, syrups: [], spices: [] }));
+    if (featured) {
+      // Featured drinks are fixed recipes — drop any add-on picks
+      setSelected({ syrups: [], spices: [], extras: [] });
       setSweetness(0);
+    } else {
+      setWhip(null);
+      // Mocha hides syrups & spices — drop any earlier picks so they don't ride along
+      if (id === 'mocha') {
+        setSelected((s) => ({ ...s, syrups: [], spices: [] }));
+        setSweetness(0);
+      }
     }
     advance(2);
   };
@@ -602,7 +638,7 @@ function OrderView({ temp, setTemp, base, setBase, addons, selected, setSelected
     if (step > 0 && dx > 70 && Math.abs(dx) > Math.abs(dy) * 1.8) back();
   };
 
-  const STEP_LABELS = ['01 · Hot or iced', '02 · Choose your drink', '03 · Caffeine', '04 · Make it yours'];
+  const STEP_LABELS = ['01 · Hot or iced', '02 · Choose your drink', '03 · Caffeine', isFeatured ? '04 · Whipped cream?' : '04 · Make it yours'];
 
   return (
     <div
@@ -691,12 +727,21 @@ function OrderView({ temp, setTemp, base, setBase, addons, selected, setSelected
         {/* Step 1 — drink */}
         {step === 1 && (
           <>
+            {featuredBases.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
+                {featuredBases.map((b, i) => (
+                  <div key={b.id} style={{ animation: `fadeUp 0.4s ease-out ${i * 45}ms both` }}>
+                    <FeaturedButton item={b} active={base === b.id} onClick={() => chooseBase(b.id)} />
+                  </div>
+                ))}
+              </div>
+            )}
             {shotBases.length > 0 && (
               <>
                 <SubLabel>Espresso shots</SubLabel>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
                   {shotBases.map((b, i) => (
-                    <div key={b.id} style={{ animation: `fadeUp 0.4s ease-out ${i * 45}ms both` }}>
+                    <div key={b.id} style={{ animation: `fadeUp 0.4s ease-out ${(featuredBases.length + i) * 45}ms both` }}>
                       <BaseButton item={b} active={base === b.id} onClick={() => chooseBase(b.id)} />
                     </div>
                   ))}
@@ -708,7 +753,7 @@ function OrderView({ temp, setTemp, base, setBase, addons, selected, setSelected
                 <SubLabel>Espresso with milk</SubLabel>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {milkBases.map((b, i) => (
-                    <div key={b.id} style={{ animation: `fadeUp 0.4s ease-out ${(shotBases.length + i) * 45}ms both` }}>
+                    <div key={b.id} style={{ animation: `fadeUp 0.4s ease-out ${(featuredBases.length + shotBases.length + i) * 45}ms both` }}>
                       <BaseButton item={b} active={base === b.id} onClick={() => chooseBase(b.id)} />
                     </div>
                   ))}
@@ -749,8 +794,39 @@ function OrderView({ temp, setTemp, base, setBase, addons, selected, setSelected
           </>
         )}
 
+        {/* Step 3 (featured drinks) — whipped cream, nothing else */}
+        {step === 3 && isFeatured && (
+          <>
+            <p style={{ fontSize: 14, opacity: 0.7, marginTop: 0, marginBottom: 18 }}>
+              Top your {baseObj?.name} with whipped cream?
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {[
+                { v: true, label: 'Whipped cream', desc: 'Piled high, dusted with spice' },
+                { v: false, label: 'No whip', desc: 'Keep it simple' },
+              ].map((o, i) => (
+                <div key={o.label} style={{ animation: `fadeUp 0.4s ease-out ${i * 70}ms both` }}>
+                  <button
+                    onClick={() => setWhip(o.v)}
+                    style={{
+                      width: '100%', textAlign: 'left', padding: '16px 18px', borderRadius: 16,
+                      background: whip === o.v ? COLORS.selectedBg : COLORS.cream,
+                      color: whip === o.v ? COLORS.selectedText : COLORS.espresso,
+                      border: `1px solid ${whip === o.v ? COLORS.copper : COLORS.espresso + '15'}`,
+                      cursor: 'pointer', fontFamily: 'inherit',
+                    }}
+                  >
+                    <div style={{ fontFamily: THEME.serifFont, fontSize: 18, fontWeight: 500, letterSpacing: '-0.01em' }}>{o.label}</div>
+                    <div style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }}>{o.desc}</div>
+                  </button>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
         {/* Step 3 — customize (all add-ons on one page) */}
-        {step === 3 && (
+        {step === 3 && !isFeatured && (
           <>
             <p style={{ fontSize: 14, opacity: 0.7, marginTop: 0, marginBottom: 20 }}>
               Optional — tap to add, then place your order.
@@ -800,7 +876,7 @@ function OrderView({ temp, setTemp, base, setBase, addons, selected, setSelected
         )}
       </div>
 
-      {step === 3 && (
+      {step === 3 && (!isFeatured || whip !== null) && (
         <div
           style={{
             position: 'fixed',
@@ -841,7 +917,7 @@ function OrderView({ temp, setTemp, base, setBase, addons, selected, setSelected
       {askingName && (
         <NameSheet
           orderSummary={`${temp ? temp[0].toUpperCase() + temp.slice(1) : ''} ${decaf ? 'Decaf ' : ''}${baseObj?.name || ''}`.trim()}
-          orderAddons={buildAddonsList(selected, addons, sweetness)}
+          orderAddons={isFeatured ? (whip ? ['Whipped Cream'] : []) : buildAddonsList(selected, addons, sweetness)}
           onCancel={() => setAskingName(false)}
           onConfirm={submitOrder}
         />
@@ -1050,6 +1126,102 @@ function BaseButton({ item, active, onClick }) {
         <div style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }}>{item.desc}</div>
       </div>
     </button>
+  );
+}
+
+// Decorated card for group: 'featured' drinks — gradient, glow, drifting sheen
+function FeaturedButton({ item, active, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        width: '100%',
+        textAlign: 'left',
+        padding: '16px 18px',
+        borderRadius: 16,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 14,
+        background: COLORS.featuredBg,
+        color: COLORS.featuredText,
+        border: `1px solid ${active ? COLORS.featuredText : COLORS.featuredGlow + '80'}`,
+        boxShadow: active
+          ? `0 0 0 3px ${COLORS.featuredGlow}55, 0 8px 24px ${COLORS.featuredGlow}40`
+          : `0 6px 20px ${COLORS.featuredGlow}33`,
+        cursor: 'pointer',
+        fontFamily: 'inherit',
+        position: 'relative',
+        overflow: 'hidden',
+      }}
+    >
+      <div
+        style={{
+          width: 44, height: 44, borderRadius: 14, flexShrink: 0,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: `${COLORS.featuredText}22`,
+          border: `1px solid ${COLORS.featuredText}33`,
+          animation: 'float 3s ease-in-out infinite',
+        }}
+      >
+        <Leaf size={22} />
+      </div>
+      <div style={{ flex: 1, position: 'relative' }}>
+        <div style={{ fontFamily: THEME.monoFont, fontSize: 9, letterSpacing: '0.2em', textTransform: 'uppercase', opacity: 0.85, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 5 }}>
+          <Sparkles size={10} /> Seasonal special
+        </div>
+        <div style={{ fontFamily: THEME.serifFont, fontSize: 19, fontWeight: 600, letterSpacing: '-0.01em' }}>{item.name}</div>
+        <div style={{ fontSize: 12, opacity: 0.85, marginTop: 2 }}>{item.desc}</div>
+      </div>
+      <span
+        className="featured-sheen"
+        style={{
+          position: 'absolute', top: 0, bottom: 0, left: '-40%', width: '40%',
+          background: `linear-gradient(100deg, transparent, ${COLORS.featuredText}30, transparent)`,
+          animation: 'sheen 3.6s ease-in-out infinite',
+          pointerEvents: 'none',
+        }}
+      />
+    </button>
+  );
+}
+
+// Subtle falling-leaves layer, enabled by COLORS.leaves in the active theme
+const LEAF_PALETTE = ['#c4612d', '#d9902a', '#8a3b12', '#b5451b', '#e0a83a'];
+function FallingLeaves() {
+  const leaves = useMemo(
+    () =>
+      Array.from({ length: 14 }, (_, i) => ({
+        left: (i * 37 + 11) % 100,
+        size: 10 + ((i * 7) % 9),
+        duration: 14 + ((i * 5) % 9),
+        delay: -((i * 3.7) % 18),
+        sway: 2.6 + ((i * 1.3) % 2.2),
+        drift: (i % 2 ? 1 : -1) * (20 + ((i * 13) % 50)),
+        spin: (i % 2 ? 1 : -1) * (180 + ((i * 47) % 360)),
+        color: LEAF_PALETTE[i % LEAF_PALETTE.length],
+        opacity: 0.3 + ((i * 3) % 4) * 0.06,
+      })),
+    []
+  );
+  return (
+    <div aria-hidden className="leaf-layer" style={{ position: 'fixed', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 2 }}>
+      {leaves.map((l, i) => (
+        <span
+          key={i}
+          style={{
+            position: 'absolute', top: 0, left: `${l.left}%`,
+            '--drift': `${l.drift}px`, '--spin': `${l.spin}deg`,
+            animation: `leafFall ${l.duration}s linear ${l.delay}s infinite`,
+            opacity: l.opacity, willChange: 'transform',
+          }}
+        >
+          <svg width={l.size} height={l.size} viewBox="0 0 24 24" style={{ display: 'block', animation: `leafSway ${l.sway}s ease-in-out ${l.delay}s infinite alternate` }}>
+            <path d="M12 2 C 5.5 6.5, 2.5 13, 12 22 C 21.5 13, 18.5 6.5, 12 2 Z" fill={l.color} />
+            <path d="M12 5 L 12 19" stroke={COLORS.paper} strokeWidth="1" strokeLinecap="round" opacity="0.6" />
+          </svg>
+        </span>
+      ))}
+    </div>
   );
 }
 
